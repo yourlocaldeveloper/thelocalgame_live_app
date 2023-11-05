@@ -1,17 +1,18 @@
 import { FC } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { AppButton, ButtonColorEnum } from './atoms/Button';
+
+import { TopRow } from '@components/organism/TopRow';
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
     main: {
-      backgroundColor: '#383838',
+      backgroundColor: '#0D1321',
     },
   });
 
   return (
     <ScrollView style={styles.main}>
-      <AppButton color={ButtonColorEnum.ORANGE} text={'Test'} />
+      <TopRow />
     </ScrollView>
   );
 };

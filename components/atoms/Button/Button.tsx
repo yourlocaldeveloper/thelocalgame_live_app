@@ -18,20 +18,26 @@ type ButtonProps = {
 export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
   const styles = StyleSheet.create({
     button: {
-      height: 100,
-      width: 100,
+      height: 75,
+      width: 75,
     },
     text: {
       textShadowOffset: {
         width: 1,
         height: 1,
       },
+      fontSize: 16,
+      fontFamily: 'Arial',
+      fontWeight: 'bold',
+      textAlign: 'center',
     },
     gradient: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 10,
+      padding: 2,
+      margin: 2,
     },
   });
 
@@ -55,9 +61,9 @@ export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
       case ButtonColorEnum.RED:
         return ['#D54A4A', '#BB0A0A'];
       case ButtonColorEnum.BLUE:
-        return ['#4B70D6', '#0944BA'];
+        return ['#454ADE', '#454ADE'];
       case ButtonColorEnum.ORANGE:
-        return ['#FF8D36', '#B85B14'];
+        return ['#f3696e', '#f8a902'];
       case ButtonColorEnum.WHITE:
         return ['#FFFFFF', '#CBCBCB'];
     }
@@ -78,7 +84,11 @@ export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
 
   return (
     <Pressable onPress={onPress} style={[styles.button]}>
-      <LinearGradient colors={getBackgroundColor()} style={styles.gradient}>
+      <LinearGradient
+        colors={getBackgroundColor()}
+        style={styles.gradient}
+        useAngle={true}
+        angle={90}>
         <Text style={[styles.text, getTextColor()]}>{text}</Text>
       </LinearGradient>
     </Pressable>
