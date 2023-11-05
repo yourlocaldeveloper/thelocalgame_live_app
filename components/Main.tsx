@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 
 import { TopRow } from '@components/organism/TopRow';
 import { TableInfo } from '@components/organism/TableInfo';
+import { PlayerInfo } from './organism/PlayerInfo';
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
@@ -15,6 +16,7 @@ export const Main: FC = () => {
     <ScrollView style={styles.main}>
       <TopRow />
       <TableInfo />
+      <PlayerInfo />
     </ScrollView>
   );
 };
