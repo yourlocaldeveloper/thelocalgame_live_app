@@ -1,18 +1,17 @@
 import { FC } from 'react';
-import { StyleSheet, ScrollView, Text } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { AppButton, ButtonColorEnum } from './atoms/Button';
 
 export const Main: FC = () => {
-  const text = 'Hello World';
-
   const styles = StyleSheet.create({
-    text: {
-      color: 'red',
+    main: {
+      backgroundColor: '#383838',
     },
   });
 
   return (
-    <ScrollView>
-      <Text style={styles.text}>{text}</Text>
+    <ScrollView style={styles.main}>
+      <AppButton color={ButtonColorEnum.ORANGE} text={'Test'} />
     </ScrollView>
   );
 };
