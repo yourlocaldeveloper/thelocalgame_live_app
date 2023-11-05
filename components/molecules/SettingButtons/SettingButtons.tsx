@@ -14,7 +14,7 @@ export const SettingButtons: FC = () => {
 
   return (
     <View style={styles.streamButtons}>
-      <AppButton color={ButtonColorEnum.BLUE} text={'Cemera 1'} />
+      <AppButton color={ButtonColorEnum.BLUE} text={'Camera 1'} />
       <AppButton color={ButtonColorEnum.BLUE} text={'Camera 2'} />
       <AppButton color={ButtonColorEnum.BLUE} text={'Camera Flop'} />
       <AppButton color={ButtonColorEnum.BLUE} text={'Table Settings'} />
