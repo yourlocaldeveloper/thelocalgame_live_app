@@ -7,19 +7,28 @@ export enum ButtonColorEnum {
   BLUE,
   ORANGE,
   WHITE,
+  BLACK,
 }
 
 type ButtonProps = {
   color: ButtonColorEnum;
   text: string;
   onPress?: () => void;
+  width?: number;
+  height?: number;
 };
 
-export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
+export const AppButton: FC<ButtonProps> = ({
+  color,
+  text,
+  onPress,
+  width,
+  height,
+}) => {
   const styles = StyleSheet.create({
     button: {
-      height: 75,
-      width: 75,
+      width: width || 75,
+      height: height || 75,
     },
     text: {
       textShadowOffset: {
@@ -54,6 +63,9 @@ export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
     white: {
       color: 'black',
     },
+    black: {
+      color: 'white',
+    },
   });
 
   const getBackgroundColor = () => {
@@ -66,6 +78,8 @@ export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
         return ['#f3696e', '#f8a902'];
       case ButtonColorEnum.WHITE:
         return ['#FFFFFF', '#CBCBCB'];
+      case ButtonColorEnum.BLACK:
+        return ['#171717', '#171717'];
     }
   };
 
@@ -79,6 +93,8 @@ export const AppButton: FC<ButtonProps> = ({ color, text, onPress }) => {
         return textStyles.orange;
       case ButtonColorEnum.WHITE:
         return textStyles.white;
+      case ButtonColorEnum.BLACK:
+        return textStyles.black;
     }
   };
 

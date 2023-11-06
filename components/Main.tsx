@@ -1,22 +1,26 @@
 import { FC } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { TopRow } from '@components/organism/TopRow';
 import { TableInfo } from '@components/organism/TableInfo';
-import { PlayerInfo } from './organism/PlayerInfo';
+import { PlayerInfo } from '@components/organism/PlayerInfo';
+import { BottomRow } from '@components/organism/BottomRow';
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
     main: {
       backgroundColor: '#0D1321',
+      height: '100%',
+      width: '100%',
     },
   });
 
   return (
-    <ScrollView style={styles.main}>
+    <View style={styles.main}>
       <TopRow />
       <TableInfo />
       <PlayerInfo />
-    </ScrollView>
+      <BottomRow />
+    </View>
   );
 };

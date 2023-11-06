@@ -1,7 +1,6 @@
 import { FC } from 'react';
 
 import { StyleSheet, View } from 'react-native';
-import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { StreamButtons } from '@components/molecules/StreamButtons';
 import { SettingButtons } from '@components/molecules/SettingButtons';
 
