@@ -1,9 +1,15 @@
-import { FC } from 'react';
-
+import { FC, useContext } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 
+import { GameContext } from '@components/GameContext';
+
 export const TableInfo: FC = () => {
-  const tableName = 'Table Name';
+  const gameContext = useContext(GameContext);
+
+  const settings = gameContext?.gameSettings;
+
+  const smallBlind = `${settings?.currency}${settings?.smallBlind}`;
+  const bigBlind = `${settings?.currency}${settings?.bigBlind}`;
 
   const styles = StyleSheet.create({
     tableInfo: {
@@ -26,9 +32,11 @@ export const TableInfo: FC = () => {
 
   return (
     <View style={styles.tableInfo}>
-      <Text style={styles.text}>Table name: {tableName}</Text>
-      <Text style={styles.text}>Stake: £0.10/£0.20</Text>
-      <Text style={styles.text}>Game Variant: Holdem</Text>
+      <Text style={styles.text}>Table name: {settings?.tableName}</Text>
+      <Text style={styles.text}>
+        Stake: {smallBlind}/{bigBlind}
+      </Text>
+      <Text style={styles.text}>Game Variant: {settings?.gameVariant}</Text>
     </View>
   );
 };

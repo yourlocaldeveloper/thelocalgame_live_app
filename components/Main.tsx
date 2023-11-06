@@ -7,10 +7,13 @@ import { PlayerInfo } from '@components/organism/PlayerInfo';
 import { BottomRow } from '@components/organism/BottomRow';
 
 import {
-  PlayerContext,
-  defaultPlayerContext,
+  GameContext,
+  defaultPlayers,
+  defaultGameSettings,
   PlayerType,
-} from './PlayerContext';
+  GameStateEnum,
+  GameSettingsType,
+} from './GameContext';
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
@@ -21,16 +24,27 @@ export const Main: FC = () => {
     },
   });
 
-  const [players, setPlayers] = useState<PlayerType[]>(defaultPlayerContext);
+  const [players, setPlayers] = useState<PlayerType[]>(defaultPlayers);
+  const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);
+  const [gameSettings, setGameSettings] =
+    useState<GameSettingsType>(defaultGameSettings);
 
   return (
-    <PlayerContext.Provider value={{ players, setPlayers }}>
+    <GameContext.Provider
+      value={{
+        players,
+        setPlayers,
+        gameState,
+        setGameState,
+        gameSettings,
+        setGameSettings,
+      }}>
       <View style={styles.main}>
         <TopRow />
         <TableInfo />
         <PlayerInfo />
         <BottomRow />
       </View>
-    </PlayerContext.Provider>
+    </GameContext.Provider>
   );
 };

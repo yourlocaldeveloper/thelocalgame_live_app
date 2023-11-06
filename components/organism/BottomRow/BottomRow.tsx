@@ -1,15 +1,10 @@
-import { FC, useState } from 'react';
+import { FC, useContext, useState } from 'react';
 
 import { StyleSheet, View } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { HandSetup } from '@components/molecules/HandSetup';
 import { HandProgress } from '@components/molecules/HandProgress';
-
-enum GameStateEnum {
-  OFF,
-  SETUP,
-  PROGRESS,
-}
+import { GameContext, GameStateEnum } from '@components/GameContext';
 
 export const BottomRow: FC = () => {
   const styles = StyleSheet.create({
@@ -26,18 +21,23 @@ export const BottomRow: FC = () => {
     },
   });
 
-  const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);
+  const gameContext = useContext(GameContext);
+
+  const handleStartTracking = () => {
+    gameContext?.setGameState(GameStateEnum.SETUP);
+  };
 
   return (
     <View style={styles.bottomRow}>
-      {gameState === GameStateEnum.SETUP && <HandSetup />}
-      {gameState === GameStateEnum.PROGRESS && <HandProgress />}
-      {gameState === GameStateEnum.OFF && (
+      {gameContext?.gameState === GameStateEnum.SETUP && <HandSetup />}
+      {gameContext?.gameState === GameStateEnum.PROGRESS && <HandProgress />}
+      {gameContext?.gameState === GameStateEnum.OFF && (
         <View style={styles.startTrackingButton}>
           <AppButton
             color={ButtonColorEnum.RED}
             width={250}
             text={'Start Tracking'}
+            onPress={handleStartTracking}
           />
         </View>
       )}

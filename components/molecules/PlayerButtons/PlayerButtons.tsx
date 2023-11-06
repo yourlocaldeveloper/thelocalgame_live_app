@@ -9,7 +9,7 @@ import {
   TextInputChangeEventData,
 } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
-import { PlayerContext, PlayerType } from '@components/PlayerContext';
+import { GameContext, PlayerType } from '@components/GameContext';
 
 export const PlayerButtons: FC = () => {
   const styles = StyleSheet.create({
@@ -57,7 +57,7 @@ export const PlayerButtons: FC = () => {
     },
   });
 
-  const playerContext = useContext(PlayerContext);
+  const playerContext = useContext(GameContext);
 
   const [showPlayerModal, setShowPlayerModal] = useState<boolean>(false);
   const [playerName, setPlayerName] = useState('');

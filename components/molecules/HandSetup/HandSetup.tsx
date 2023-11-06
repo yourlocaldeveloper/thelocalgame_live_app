@@ -1,7 +1,8 @@
-import { FC } from 'react';
-
+import { FC, useContext } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
+import { GameContext } from '@components/GameContext';
 
 export const HandSetup: FC = () => {
   const styles = StyleSheet.create({
@@ -22,19 +23,49 @@ export const HandSetup: FC = () => {
     },
   });
 
+  const gameContext = useContext(GameContext);
+  const players = gameContext?.players;
+  const settings = gameContext?.gameSettings;
+  const setSettings = gameContext?.setGameSettings;
+
+  const smallBlind = `${settings?.currency}${settings?.smallBlind}`;
+  const bigBlind = `${settings?.currency}${settings?.bigBlind}`;
+  const ante = settings?.ante ? `${settings?.currency}${settings.ante}` : '';
+
+  const getDealerText = (index: number) => {
+    if (index === settings?.dealerPosition) {
+      return 'BTN';
+    } else {
+      return 'X';
+    }
+  };
+
+  const handleDealerPosition = (index: number) => {
+    if (settings && setSettings) {
+      setSettings({ ...settings, dealerPosition: index });
+    }
+  };
+
+  const dealerIndicators = players?.map((player, index) => {
+    const dealerText = getDealerText(index);
+    const buttonColor = player.active
+      ? ButtonColorEnum.WHITE
+      : ButtonColorEnum.BLACK;
+    const onPress = player.active ? handleDealerPosition(index) : () => {};
+
+    return (
+      <AppButton
+        key={index}
+        color={buttonColor}
+        text={dealerText}
+        onPress={() => onPress}
+      />
+    );
+  });
+
   return (
     <View style={styles.handSetup}>
-      <View style={styles.row}>
-        <AppButton color={ButtonColorEnum.WHITE} text={'BTN'} />
-        <AppButton color={ButtonColorEnum.WHITE} text={'SB'} />
-        <AppButton color={ButtonColorEnum.WHITE} text={'BB'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-        <AppButton color={ButtonColorEnum.BLACK} text={'X'} />
-      </View>
+      <View style={styles.row}>{dealerIndicators}</View>
       <View style={styles.row}>
         <Text style={styles.blindsText}>SMALL BLIND</Text>
         <Text style={styles.blindsText}>BIG BLIND</Text>
@@ -43,19 +74,19 @@ export const HandSetup: FC = () => {
       <View style={styles.row}>
         <AppButton
           color={ButtonColorEnum.WHITE}
-          text={'£0.10'}
+          text={smallBlind}
           height={50}
           width={150}
         />
         <AppButton
           color={ButtonColorEnum.WHITE}
-          text={'£0.20'}
+          text={bigBlind}
           height={50}
           width={150}
         />
         <AppButton
           color={ButtonColorEnum.WHITE}
-          text={''}
+          text={ante}
           height={50}
           width={150}
         />

@@ -1,7 +1,7 @@
 import { FC, useContext } from 'react';
 
 import { StyleSheet, View, Text } from 'react-native';
-import { PlayerContext, PlayerType } from '@components/PlayerContext';
+import { GameContext } from '@components/GameContext';
 
 export const StackIndicators: FC = () => {
   const styles = StyleSheet.create({
@@ -21,7 +21,7 @@ export const StackIndicators: FC = () => {
     },
   });
 
-  const playerContext = useContext(PlayerContext);
+  const playerContext = useContext(GameContext);
 
   const stackIndicators = playerContext?.players.map(player => {
     return <Text style={styles.indicator}>{player.stack || '0'}</Text>;
