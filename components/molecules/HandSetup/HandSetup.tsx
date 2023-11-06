@@ -1,4 +1,4 @@
-import { FC, useContext } from 'react';
+import { FC, useContext, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
@@ -51,14 +51,14 @@ export const HandSetup: FC = () => {
     const buttonColor = player.active
       ? ButtonColorEnum.WHITE
       : ButtonColorEnum.BLACK;
-    const onPress = player.active ? handleDealerPosition(index) : () => {};
 
+    // TO-DO: Need to handle these not re-rendering when active player added/removed.
     return (
       <AppButton
         key={index}
         color={buttonColor}
         text={dealerText}
-        onPress={() => onPress}
+        onPress={() => (player.active ? handleDealerPosition(index) : () => {})}
       />
     );
   });

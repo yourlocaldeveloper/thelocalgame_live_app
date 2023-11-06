@@ -24,6 +24,7 @@ export const StackIndicators: FC = () => {
   const playerContext = useContext(GameContext);
 
   const stackIndicators = playerContext?.players.map(player => {
+    // TO-DO: When GameContext is updated these do not re-render. Need to figure out how to re-render relevant components when context updates.
     return <Text style={styles.indicator}>{player.stack || '0'}</Text>;
   });
 

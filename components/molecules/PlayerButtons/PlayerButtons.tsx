@@ -7,6 +7,7 @@ import {
   TextInput,
   NativeSyntheticEvent,
   TextInputChangeEventData,
+  Switch,
 } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { GameContext, PlayerType } from '@components/GameContext';
@@ -63,12 +64,14 @@ export const PlayerButtons: FC = () => {
   const [playerName, setPlayerName] = useState('');
   const [playerStack, setPlayerStack] = useState('');
   const [playerIndex, setPlayerIndex] = useState(0);
+  const [playerActive, setPlayerActive] = useState(false);
 
   const handlePlayerButtonClick = (player: PlayerType, playerIndex: number) => {
     setShowPlayerModal(true);
     setPlayerName(player.name);
     setPlayerStack(player.stack || '');
     setPlayerIndex(playerIndex);
+    setPlayerActive(player.active);
   };
 
   const closeModal = () => {
@@ -76,6 +79,7 @@ export const PlayerButtons: FC = () => {
     setPlayerName('');
     setPlayerStack('');
     setPlayerIndex(0);
+    setPlayerActive(false);
   };
 
   const handlePlayerNameChange = (
@@ -100,7 +104,7 @@ export const PlayerButtons: FC = () => {
       players[playerIndex] = {
         name: playerName,
         stack: playerStack,
-        active: true,
+        active: playerActive,
       };
 
       setPlayers(players);
@@ -112,7 +116,7 @@ export const PlayerButtons: FC = () => {
   const playerButtons = playerContext?.players.map((player, index) => {
     return (
       <AppButton
-        color={ButtonColorEnum.RED}
+        color={player.active ? ButtonColorEnum.GREEN : ButtonColorEnum.RED}
         text={player.name}
         onPress={() => handlePlayerButtonClick(player, index)}
       />
@@ -139,6 +143,15 @@ export const PlayerButtons: FC = () => {
               onChange={handlePlayerStackChange}>
               {playerStack}
             </TextInput>
+          </View>
+          <View style={styles.formRowWrapper}>
+            <Text style={styles.formText}>Player Active:</Text>
+            <Switch
+              trackColor={{ false: 'red', true: 'green' }}
+              thumbColor={playerActive ? 'green' : 'red'}
+              onValueChange={setPlayerActive}
+              value={playerActive}
+            />
           </View>
           <AppButton
             color={ButtonColorEnum.RED}

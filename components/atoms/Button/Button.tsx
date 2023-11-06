@@ -6,6 +6,7 @@ export enum ButtonColorEnum {
   RED,
   BLUE,
   ORANGE,
+  GREEN,
   WHITE,
   BLACK,
 }
@@ -60,6 +61,9 @@ export const AppButton: FC<ButtonProps> = ({
     orange: {
       color: 'white',
     },
+    green: {
+      color: 'white',
+    },
     white: {
       color: 'black',
     },
@@ -76,6 +80,8 @@ export const AppButton: FC<ButtonProps> = ({
         return ['#454ADE', '#454ADE'];
       case ButtonColorEnum.ORANGE:
         return ['#f3696e', '#f8a902'];
+      case ButtonColorEnum.GREEN:
+        return ['#26be18', '#26be18'];
       case ButtonColorEnum.WHITE:
         return ['#FFFFFF', '#CBCBCB'];
       case ButtonColorEnum.BLACK:
@@ -91,6 +97,8 @@ export const AppButton: FC<ButtonProps> = ({
         return textStyles.blue;
       case ButtonColorEnum.ORANGE:
         return textStyles.orange;
+      case ButtonColorEnum.GREEN:
+        return textStyles.green;
       case ButtonColorEnum.WHITE:
         return textStyles.white;
       case ButtonColorEnum.BLACK:
