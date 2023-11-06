@@ -1,6 +1,7 @@
-import { FC } from 'react';
+import { FC, useContext } from 'react';
 
 import { StyleSheet, View, Text } from 'react-native';
+import { PlayerContext, PlayerType } from '@components/PlayerContext';
 
 export const StackIndicators: FC = () => {
   const styles = StyleSheet.create({
@@ -20,17 +21,11 @@ export const StackIndicators: FC = () => {
     },
   });
 
-  return (
-    <View style={styles.stackIndicators}>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-      <Text style={styles.indicator}>£0.00</Text>
-    </View>
-  );
+  const playerContext = useContext(PlayerContext);
+
+  const stackIndicators = playerContext?.players.map(player => {
+    return <Text style={styles.indicator}>{player.stack || '0'}</Text>;
+  });
+
+  return <View style={styles.stackIndicators}>{stackIndicators}</View>;
 };

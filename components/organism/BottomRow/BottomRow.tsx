@@ -26,9 +26,7 @@ export const BottomRow: FC = () => {
     },
   });
 
-  const [gameState, setGameState] = useState<GameStateEnum>(
-    GameStateEnum.PROGRESS,
-  );
+  const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);
 
   return (
     <View style={styles.bottomRow}>
