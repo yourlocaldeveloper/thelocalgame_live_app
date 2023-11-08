@@ -11,22 +11,13 @@ import {
 } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { GameContext, PlayerType } from '@components/GameContext';
+import { Modal } from '@components/atoms/Modal';
 
 export const PlayerButtons: FC = () => {
   const styles = StyleSheet.create({
     playerButtons: {
       display: 'flex',
       flexDirection: 'row',
-    },
-    playerModal: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      position: 'absolute',
-      width: '100%',
-      height: 300,
-      backgroundColor: 'black',
-      zIndex: 10,
     },
     playerTextInput: {
       color: 'black',
@@ -107,7 +98,7 @@ export const PlayerButtons: FC = () => {
         active: playerActive,
       };
 
-      setPlayers(players);
+      setPlayers([...players]);
     }
 
     closeModal();
@@ -116,6 +107,7 @@ export const PlayerButtons: FC = () => {
   const playerButtons = playerContext?.players.map((player, index) => {
     return (
       <AppButton
+        key={index}
         color={player.active ? ButtonColorEnum.GREEN : ButtonColorEnum.RED}
         text={player.name}
         onPress={() => handlePlayerButtonClick(player, index)}
@@ -127,7 +119,7 @@ export const PlayerButtons: FC = () => {
     <>
       <View style={styles.playerButtons}>{playerButtons}</View>
       {showPlayerModal && (
-        <View style={styles.playerModal}>
+        <Modal>
           <View style={styles.formRowWrapper}>
             <Text style={styles.formText}>Player Name:</Text>
             <TextInput
@@ -167,7 +159,7 @@ export const PlayerButtons: FC = () => {
               onPress={closeModal}
             />
           </View>
-        </View>
+        </Modal>
       )}
     </>
   );
