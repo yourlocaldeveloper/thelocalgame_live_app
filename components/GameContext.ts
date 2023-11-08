@@ -1,9 +1,37 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 
+export enum CardValue {
+  Ace = 'A',
+  King = 'K',
+  Queen = 'Q',
+  Ten = 'T',
+  Nine = '9',
+  Eight = '8',
+  Seven = '7',
+  Six = '6',
+  Five = '5',
+  Four = '4',
+  Three = '3',
+  Two = '2',
+}
+
+export enum CardSuit {
+  CLUB = 'c',
+  DIAMOND = 'd',
+  HEART = 'h',
+  SPADE = 's',
+}
+
+export type Card = {
+  value: CardValue;
+  suit: CardSuit;
+};
+
 export type PlayerType = {
   name: string;
   stack?: string;
   active: boolean;
+  cards?: Card[];
 };
 
 export enum PokerVariantEnum {
