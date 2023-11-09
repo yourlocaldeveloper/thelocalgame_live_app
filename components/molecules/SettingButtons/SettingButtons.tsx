@@ -1,4 +1,4 @@
-import { FC, useContext, useState } from 'react';
+import { FC, useContext, useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
@@ -88,6 +88,15 @@ export const SettingButtons: FC = () => {
     tableSettings?.smallestChip || '',
   );
 
+  // useEffect required to set values on table settings when re-opening as it didnt re-render component
+  useEffect(() => {
+    const newTableSettings = gameContext?.gameSettings;
+
+    setSmallBlind(newTableSettings?.smallBlind);
+    setBigBlind(newTableSettings?.bigBlind);
+    setSmallestChip(newTableSettings?.smallestChip || '');
+  }, [gameContext?.gameSettings]);
+
   const handleEndGame = () => {
     gameContext?.setGameState(GameStateEnum.OFF);
   };
@@ -97,9 +106,6 @@ export const SettingButtons: FC = () => {
   };
 
   const handleSettingsModalClose = () => {
-    setSmallBlind(tableSettings?.smallBlind);
-    setBigBlind(tableSettings?.bigBlind);
-    setSmallestChip(tableSettings?.smallestChip || '');
     setShowTableSettings(false);
   };
 

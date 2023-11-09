@@ -66,8 +66,8 @@ type GameContextType = {
 
 export const defaultGameSettings: GameSettingsType = {
   tableName: 'The Local Game - Live',
-  bigBlind: '1',
-  smallBlind: '0.5',
+  bigBlind: '0.2',
+  smallBlind: '0.1',
   smallestChip: '0.1',
   dealerPosition: 0,
   currency: '£',
