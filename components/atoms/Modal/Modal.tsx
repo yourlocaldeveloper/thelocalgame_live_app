@@ -1,10 +1,12 @@
 import { FC, PropsWithChildren } from 'react';
 
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Dimensions } from 'react-native';
 
-interface ModalProps extends PropsWithChildren {}
+interface ModalProps extends PropsWithChildren {
+  isFullscreen?: boolean;
+}
 
-export const Modal: FC<ModalProps> = ({ children }) => {
+export const Modal: FC<ModalProps> = ({ children, isFullscreen }) => {
   const styles = StyleSheet.create({
     modal: {
       position: 'absolute',
@@ -14,7 +16,19 @@ export const Modal: FC<ModalProps> = ({ children }) => {
       backgroundColor: '#0D1321',
       zIndex: 100,
     },
+    fullscreenModal: {
+      position: 'absolute',
+      width: Dimensions.get('window').width,
+      height: Dimensions.get('window').height,
+      top: 0,
+      backgroundColor: '#0D1321',
+      zIndex: 100,
+    },
   });
 
-  return <View style={styles.modal}>{children}</View>;
+  return (
+    <View style={isFullscreen ? styles.fullscreenModal : styles.modal}>
+      {children}
+    </View>
+  );
 };

@@ -42,7 +42,7 @@ export type GameSettingsType = {
   tableName: string;
   bigBlind: string;
   smallBlind: string;
-  smallestChip?: string;
+  smallestChip: string;
   ante?: string;
   currency?: string;
   dealerPosition: number;
@@ -68,6 +68,7 @@ export const defaultGameSettings: GameSettingsType = {
   tableName: 'The Local Game - Live',
   bigBlind: '1',
   smallBlind: '0.5',
+  smallestChip: '0.1',
   dealerPosition: 0,
   currency: '£',
   gameVariant: PokerVariantEnum.TEXAS,
