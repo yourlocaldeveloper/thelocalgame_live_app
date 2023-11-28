@@ -4,11 +4,9 @@ import { StyleSheet, View, Text } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { HandSetup } from '@components/molecules/HandSetup';
 import { HandProgress } from '@components/molecules/HandProgress';
-import {
-  GameContext,
-  GameStateEnum,
-  PlayerType,
-} from '@components/GameContext';
+import { GameContext, GameStateEnum } from '@components/GameContext';
+
+import { checkActivePlayers } from './BottomRow.helpers';
 
 export const BottomRow: FC = () => {
   const styles = StyleSheet.create({
@@ -31,13 +29,8 @@ export const BottomRow: FC = () => {
   const gameContext = useContext(GameContext);
   const [showError, setShowError] = useState(false);
 
-  const checkActivePlayer = (players: PlayerType[]) => {
-    const activePlayers = players.filter(player => player.active === true);
-    return activePlayers.length > 1 ? true : false;
-  };
-
   const handleStartTracking = () => {
-    if (checkActivePlayer(gameContext?.players || [])) {
+    if (checkActivePlayers(gameContext?.players || [])) {
       setShowError(false);
       gameContext?.setGameState(GameStateEnum.SETUP);
     } else {

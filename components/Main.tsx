@@ -13,6 +13,9 @@ import {
   PlayerType,
   GameStateEnum,
   GameSettingsType,
+  IHandInfo,
+  defaultHandInfo,
+  testPlayers,
 } from './GameContext';
 
 export const Main: FC = () => {
@@ -24,10 +27,11 @@ export const Main: FC = () => {
     },
   });
 
-  const [players, setPlayers] = useState<PlayerType[]>(defaultPlayers);
+  const [players, setPlayers] = useState<PlayerType[]>(testPlayers);
   const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);
   const [gameSettings, setGameSettings] =
     useState<GameSettingsType>(defaultGameSettings);
+  const [handInfo, setHandInfo] = useState<IHandInfo>(defaultHandInfo);
 
   return (
     <GameContext.Provider
@@ -38,6 +42,8 @@ export const Main: FC = () => {
         setGameState,
         gameSettings,
         setGameSettings,
+        handInfo,
+        setHandInfo,
       }}>
       <View style={styles.main}>
         <TopRow />

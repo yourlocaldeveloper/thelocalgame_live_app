@@ -1,8 +1,14 @@
-import { FC, useContext, useEffect } from 'react';
+import { FC, useContext, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
-import { GameContext } from '@components/GameContext';
+import {
+  GameContext,
+  GameStateEnum,
+  HandStreetEnum,
+  PlayerType,
+} from '@components/GameContext';
+import { checkActivePlayers } from '@components/organism/BottomRow/BottomRow.helpers';
 
 export const HandSetup: FC = () => {
   const styles = StyleSheet.create({
@@ -21,12 +27,23 @@ export const HandSetup: FC = () => {
       color: 'white',
       fontWeight: 'bold',
     },
+    startHandButtonWrapper: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      width: 75,
+    },
+    error: {
+      textAlign: 'center',
+      color: 'white',
+    },
   });
 
   const gameContext = useContext(GameContext);
   const players = gameContext?.players;
   const settings = gameContext?.gameSettings;
   const setSettings = gameContext?.setGameSettings;
+  const [showError, setShowError] = useState(false);
 
   const smallBlind = `${settings?.currency}${settings?.smallBlind}`;
   const bigBlind = `${settings?.currency}${settings?.bigBlind}`;
@@ -63,6 +80,56 @@ export const HandSetup: FC = () => {
     );
   });
 
+  const getActivePlayers = (players: PlayerType[]) => {
+    const activePlayers = players.filter(player => player.active === true);
+    return activePlayers;
+  };
+
+  const getPlayerWithButton = () => {
+    const dealerPosition = settings?.dealerPosition;
+
+    const allPlayers = gameContext?.players || [];
+
+    const dealerPlayer = allPlayers.filter(
+      (player, index) => index === dealerPosition,
+    );
+
+    return dealerPlayer[0];
+  };
+
+  const handleStartHand = () => {
+    if (gameContext && checkActivePlayers(gameContext?.players || [])) {
+      const tableSettings = gameContext.gameSettings;
+      const players = gameContext.players;
+      const setHandInfo = gameContext.setHandInfo;
+
+      const playersInHand = getActivePlayers(players);
+      const playerWithButton = getPlayerWithButton();
+
+      const initialPot = String(
+        (
+          Number(tableSettings.smallBlind) + Number(tableSettings.bigBlind)
+        ).toFixed(2),
+      );
+
+      const dealerIndex = playersInHand.indexOf(playerWithButton);
+
+      setHandInfo({
+        pot: initialPot,
+        players: playersInHand,
+        dealerPosition: dealerIndex,
+        street: HandStreetEnum.PREFLOP,
+      });
+
+      // console.log('Preflop Player Order:', preFlopPlayerOrder);
+      // console.log('Postflop Player Order:', postFlopPlayerOrder);
+      setShowError(false);
+      gameContext?.setGameState(GameStateEnum.PROGRESS);
+    } else {
+      setShowError(true);
+    }
+  };
+
   return (
     <View style={styles.handSetup}>
       <View style={styles.row}>{dealerIndicators}</View>
@@ -89,6 +156,16 @@ export const HandSetup: FC = () => {
           text={ante}
           height={50}
           width={150}
+        />
+      </View>
+      <View style={styles.startHandButtonWrapper}>
+        {showError && (
+          <Text style={styles.error}>Need at least two players to start.</Text>
+        )}
+        <AppButton
+          color={ButtonColorEnum.RED}
+          text={'Start Hand'}
+          onPress={handleStartHand}
         />
       </View>
     </View>

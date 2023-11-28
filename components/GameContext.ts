@@ -55,6 +55,23 @@ export enum GameStateEnum {
   PROGRESS,
 }
 
+export enum HandStreetEnum {
+  PREFLOP,
+  FLOP,
+  TURN,
+  RIVER,
+}
+
+export interface IHandInfo {
+  pot: string;
+  players: PlayerType[];
+  dealerPosition: number;
+  street: HandStreetEnum;
+  stradle?: number;
+  preFlopOrder?: PlayerType[];
+  postFlopOrder?: PlayerType[];
+}
+
 type GameContextType = {
   players: PlayerType[];
   setPlayers: Dispatch<SetStateAction<PlayerType[]>>;
@@ -62,6 +79,8 @@ type GameContextType = {
   setGameState: Dispatch<SetStateAction<GameStateEnum>>;
   gameSettings: GameSettingsType;
   setGameSettings: Dispatch<SetStateAction<GameSettingsType>>;
+  handInfo: IHandInfo;
+  setHandInfo: Dispatch<SetStateAction<IHandInfo>>;
 };
 
 export const defaultGameSettings: GameSettingsType = {
@@ -72,6 +91,13 @@ export const defaultGameSettings: GameSettingsType = {
   dealerPosition: 0,
   currency: '£',
   gameVariant: PokerVariantEnum.TEXAS,
+};
+
+export const defaultHandInfo: IHandInfo = {
+  pot: '0',
+  players: [],
+  dealerPosition: 0,
+  street: HandStreetEnum.PREFLOP,
 };
 
 export const defaultPlayers: PlayerType[] = [
@@ -119,6 +145,54 @@ export const defaultPlayers: PlayerType[] = [
     name: 'Seat 9',
     stack: '0.00',
     active: false,
+  },
+];
+
+export const testPlayers: PlayerType[] = [
+  {
+    name: 'Test 1',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 2',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 3',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 4',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 5',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 6',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 7',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 8',
+    stack: '50.00',
+    active: true,
+  },
+  {
+    name: 'Test 9',
+    stack: '50.00',
+    active: true,
   },
 ];
 
