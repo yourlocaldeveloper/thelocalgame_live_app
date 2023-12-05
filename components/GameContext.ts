@@ -31,6 +31,7 @@ export type PlayerType = {
   name: string;
   stack?: string;
   active: boolean;
+  seat: number;
   cards?: Card[];
 };
 
@@ -56,10 +57,18 @@ export enum GameStateEnum {
 }
 
 export enum HandStreetEnum {
-  PREFLOP,
-  FLOP,
-  TURN,
-  RIVER,
+  PREFLOP = 'preflop',
+  FLOP = 'flop',
+  TURN = 'turn',
+  RIVER = 'river',
+}
+
+export enum HandActionEnum {
+  NON = 'non',
+  FOLD = 'fold',
+  CHECK = 'check',
+  CALL = 'call',
+  BET = 'bet',
 }
 
 export interface IHandInfo {
@@ -104,46 +113,55 @@ export const defaultPlayers: PlayerType[] = [
   {
     name: 'Seat 1',
     stack: '0.00',
+    seat: 1,
     active: false,
   },
   {
     name: 'Seat 2',
     stack: '0.00',
+    seat: 2,
     active: false,
   },
   {
     name: 'Seat 3',
     stack: '0.00',
+    seat: 3,
     active: false,
   },
   {
     name: 'Seat 4',
     stack: '0.00',
+    seat: 4,
     active: false,
   },
   {
     name: 'Seat 5',
     stack: '0.00',
+    seat: 5,
     active: false,
   },
   {
     name: 'Seat 6',
     stack: '0.00',
+    seat: 6,
     active: false,
   },
   {
     name: 'Seat 7',
     stack: '0.00',
+    seat: 7,
     active: false,
   },
   {
     name: 'Seat 8',
     stack: '0.00',
+    seat: 8,
     active: false,
   },
   {
     name: 'Seat 9',
     stack: '0.00',
+    seat: 9,
     active: false,
   },
 ];
@@ -152,46 +170,55 @@ export const testPlayers: PlayerType[] = [
   {
     name: 'Test 1',
     stack: '50.00',
+    seat: 1,
     active: true,
   },
   {
     name: 'Test 2',
     stack: '50.00',
+    seat: 2,
     active: true,
   },
   {
     name: 'Test 3',
     stack: '50.00',
+    seat: 3,
     active: true,
   },
   {
     name: 'Test 4',
     stack: '50.00',
+    seat: 4,
     active: true,
   },
   {
     name: 'Test 5',
     stack: '50.00',
+    seat: 5,
     active: true,
   },
   {
     name: 'Test 6',
     stack: '50.00',
+    seat: 6,
     active: true,
   },
   {
     name: 'Test 7',
     stack: '50.00',
+    seat: 7,
     active: true,
   },
   {
     name: 'Test 8',
     stack: '50.00',
+    seat: 8,
     active: true,
   },
   {
     name: 'Test 9',
     stack: '50.00',
+    seat: 9,
     active: true,
   },
 ];

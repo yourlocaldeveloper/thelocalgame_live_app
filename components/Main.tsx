@@ -1,4 +1,4 @@
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import { TopRow } from '@components/organism/TopRow';
@@ -32,6 +32,10 @@ export const Main: FC = () => {
   const [gameSettings, setGameSettings] =
     useState<GameSettingsType>(defaultGameSettings);
   const [handInfo, setHandInfo] = useState<IHandInfo>(defaultHandInfo);
+
+  useEffect(() => {
+    console.log('======= CHANGE TO PLAYERS:', players);
+  }, [players]);
 
   return (
     <GameContext.Provider

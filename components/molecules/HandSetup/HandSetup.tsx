@@ -103,7 +103,7 @@ export const HandSetup: FC = () => {
       const players = gameContext.players;
       const setHandInfo = gameContext.setHandInfo;
 
-      const playersInHand = getActivePlayers(players);
+      const playersInHand = getActivePlayers([...players]);
       const playerWithButton = getPlayerWithButton();
 
       const initialPot = String(

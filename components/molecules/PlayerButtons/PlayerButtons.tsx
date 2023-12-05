@@ -128,6 +128,7 @@ export const PlayerButtons: FC = () => {
     if (players && setPlayers) {
       players[playerIndex] = {
         name: playerName,
+        seat: players[playerIndex].seat,
         stack: playerStack,
         active: playerActive,
       };
