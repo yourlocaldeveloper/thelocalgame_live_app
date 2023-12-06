@@ -49,7 +49,6 @@ export const HandProgress: FC = () => {
   );
 
   // Indicated action path + main action (usually agressive or non)
-  // const [playersAction, setPlayersAction] = useState<PlayerAction[]>([]);
   const [mainAction, setMainAction] = useState<PlayerAction | null>(null);
 
   // Player info store + backup for stack adjustments
@@ -94,11 +93,12 @@ export const HandProgress: FC = () => {
     setCurrentOrder(null);
     setPlayerToAct(null);
     setMainAction(null);
+    setPlayersInHand([]);
   };
 
   const handleMissdeal = () => {
     if (backUpPlayerInfo) {
-      console.log(backUpPlayerInfo);
+      console.log(`[ERROR]: MISSDEAL - BACKUP USED`);
       gameContext?.setPlayers(backUpPlayerInfo);
     }
 
@@ -106,8 +106,35 @@ export const HandProgress: FC = () => {
   };
 
   // TO-DO: Show winner and alocate pot to them, update everything and have modal to confirm winner.
-  const handleHandWon = (player: PlayerType) => {
-    console.log('Player Won:', player.name);
+  const handleHandWon = (winningPlayer: PlayerType) => {
+    console.log('[INFO] Player Won:', winningPlayer.name);
+    const handContext = gameContext?.handInfo;
+
+    if (handContext?.players && currentOrder) {
+      const playerInCurrentOrder = currentOrder.find(
+        player => player.seat === winningPlayer.seat,
+      );
+
+      const playerArray = handContext?.players;
+
+      if (playerInCurrentOrder) {
+        const playerAdjustedStack = getWinningPlayerStack(
+          playerInCurrentOrder,
+          handContext.pot || '',
+        );
+
+        const handWonPlayerArray = playerArray.map(
+          player =>
+            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
+            player,
+        );
+
+        if (gameContext?.setPlayers) {
+          gameContext.setPlayers(handWonPlayerArray);
+        }
+      }
+    }
+
     handleEndHand();
   };
 
@@ -116,11 +143,18 @@ export const HandProgress: FC = () => {
       const handInfo = gameContext?.handInfo;
       const playerWithButton = handInfo?.players[handInfo.dealerPosition];
       const originalPlayerOrder = handInfo?.players;
+
+      if (currentStreet === HandStreetEnum.RIVER) {
+        // Check if reached river, then award winning player pot
+        // TO:DO add proper hand won logic. Placeholder is to just give last player pot
+        handleHandWon(currentOrder[0]);
+        return;
+      }
+
       if (playerWithButton && originalPlayerOrder) {
+        // Run if order not provided
         if (!order) {
           let orderWithActivePlayers;
-          console.log('ORDER BEFORE CHANGING:', originalPlayerOrder);
-          console.log('ORDER BEFORE CURRENT ORDER:', currentOrder);
           if (currentStreet === HandStreetEnum.PREFLOP) {
             const postFlopOrder = getPostFlopPlayerOrder(
               playerWithButton,
@@ -129,8 +163,6 @@ export const HandProgress: FC = () => {
             orderWithActivePlayers = postFlopOrder.filter(player =>
               currentOrder.find(ply => ply.seat === player.seat),
             );
-
-            console.log('ATTEMPTING TO DO THIS ORDER:', orderWithActivePlayers);
           } else {
             orderWithActivePlayers = currentOrder;
           }
@@ -150,12 +182,10 @@ export const HandProgress: FC = () => {
               originalPlayerOrder,
             );
             orderWithActivePlayers = postFlopOrder.filter(player =>
-              currentOrder.find(ply => ply.seat === player.seat),
+              order.find(ply => ply.seat === player.seat),
             );
-
-            console.log('ATTEMPTING TO DO THIS ORDER:', orderWithActivePlayers);
           } else {
-            orderWithActivePlayers = currentOrder;
+            orderWithActivePlayers = order;
           }
           setMainAction({
             bet: '',
@@ -169,87 +199,129 @@ export const HandProgress: FC = () => {
     }
   };
 
-  const handleAssignNextPlayer = (action: HandActionEnum) => {
+  const handleAssignNextPlayer = (order?: PlayerType[]) => {
     if (currentOrder && playerToAct) {
       const activePlayerIndex = currentOrder.indexOf(playerToAct);
       const nextPlayer = getNextToAct(activePlayerIndex, currentOrder);
-      let newPlayerOrder: PlayerType[] = currentOrder;
 
-      // If action fold, remove them from active players.
-      if (action === HandActionEnum.FOLD) {
-        newPlayerOrder = currentOrder.filter(
-          (player, index) => index !== activePlayerIndex,
-        );
+      if (mainAction?.player && nextPlayer.seat === mainAction?.player.seat) {
+        if (mainAction.action !== HandActionEnum.NON) {
+          console.log(
+            '[CLOSING ACTION]: Next player has no action, new street.',
+          );
 
-        setCurrentOrder(newPlayerOrder);
+          handleClosingAction(order);
+          const newStreet = getNextStreet(currentStreet);
+          setCurrentStreet(newStreet);
+          return;
+        }
       }
 
-      // Check if player has won (only one active player left)
-      if (newPlayerOrder.length === 1) {
-        nextPlayer ? handleHandWon(nextPlayer) : handleHandWon(currentOrder[0]);
-        return;
+      console.log(`[INFO]: New Player To Act ${nextPlayer.name}`);
+
+      if (order) {
+        setCurrentOrder(order);
       }
-
-      console.log('==== NEXT PLAYER: ', nextPlayer);
-
-      console.log('==== MAIN ACTION PLAYER: ', mainAction?.player?.seat);
-
-      if (
-        nextPlayer?.seat === mainAction?.player?.seat &&
-        mainAction.action !== HandActionEnum.NON
-      ) {
-        console.log('CATCH =============');
-        handleClosingAction(newPlayerOrder);
-        const newStreet = getNextStreet(currentStreet);
-        setCurrentStreet(newStreet);
-        return;
-      }
-
-      console.log('Next Player To Act:', nextPlayer);
-      console.log('New Order:', newPlayerOrder);
       setPlayerToAct(nextPlayer);
     }
   };
 
-  // const handleStoreAction = (
-  //   actionPlayer: PlayerType | undefined,
-  //   action: HandActionEnum,
-  //   playerBet?: string,
-  // ) => {
-  //   const player = playersAction.findIndex(
-  //     player => player.player === actionPlayer,
-  //   );
-  //   const newAction = {
-  //     player: actionPlayer,
-  //     action,
-  //     bet: playerBet || '',
-  //   };
+  const handleFold = (
+    actionPlayer: PlayerType | null,
+    isClosingAction?: boolean,
+  ) => {
+    console.log(`[PLAYER ACTION]: ${actionPlayer?.name} FOLDS`);
+    if (actionPlayer && currentOrder) {
+      let newPlayerOrder: PlayerType[] = [];
+      const activePlayerIndex = currentOrder.indexOf(actionPlayer);
+      newPlayerOrder = currentOrder.filter(
+        (player, index) => index !== activePlayerIndex,
+      );
 
-  //   if (player !== -1) {
-  //     const actionPlayerBet = playersAction[player].bet;
-  //     const newPlayersAction = playersAction;
+      if (newPlayerOrder.length === 1) {
+        // Check if last player
+        handleHandWon(newPlayerOrder[0]);
+        return;
+      }
 
-  //     if (playerBet && Number(playerBet) > Number(mainAction?.bet)) {
-  //       setMainAction(newAction);
-  //       newAction.bet = actionPlayerBet;
-  //     }
+      if (isClosingAction) {
+        handleClosingAction(newPlayerOrder);
+        const newStreet = getNextStreet(currentStreet);
+        setCurrentStreet(newStreet);
+      } else {
+        handleAssignNextPlayer([...newPlayerOrder]);
+      }
+    }
+  };
 
-  //     newPlayersAction[player] = newAction;
+  const handleCallOrBet = (
+    actionPlayer: PlayerType,
+    playerBet: string,
+    isBet?: boolean,
+    isClosingAction?: boolean,
+  ) => {
+    console.log(
+      `[PLAYER ACTION]: ${actionPlayer?.name} HAS PUT IN ${playerBet}`,
+    );
+    const playerSeat = actionPlayer.seat;
 
-  //     if (action === HandActionEnum.FOLD) {
-  //       newPlayersAction.splice(player, 1);
-  //     }
+    if (currentOrder) {
+      const playerInCurrentOrder = currentOrder.find(
+        player => player.seat === playerSeat,
+      );
 
-  //     setPlayersAction([...newPlayersAction]);
-  //   } else {
-  //     console.log('NOT FOUND PLAYER IN ACTION DB');
-  //     if (action !== HandActionEnum.FOLD) {
-  //       console.log('NOT FOLD, ADD ENTRY');
-  //       console.log('SHOULD BE:', [...playersAction, newAction]);
-  //       setPlayersAction([...playersAction, newAction]);
-  //     }
-  //   }
-  // };
+      if (playerInCurrentOrder) {
+        const playerAdjustedStack = getStackChange(
+          playerInCurrentOrder,
+          playerBet || '',
+        );
+
+        const newCurrentOrder = currentOrder.map(
+          player =>
+            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
+            player,
+        );
+
+        if (isBet) {
+          const newAction: PlayerAction = {
+            player: actionPlayer,
+            action: HandActionEnum.BET,
+            bet: playerBet || '',
+          };
+
+          setMainAction(newAction);
+        }
+
+        const handInfo = gameContext?.handInfo;
+        const setHandInfo = gameContext?.setHandInfo;
+
+        const newPlayersArray = handInfo?.players.map(
+          player =>
+            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
+            player,
+        );
+
+        if (handInfo && playerBet && setHandInfo && newPlayersArray) {
+          const newPot = addChips(handInfo.pot, playerBet);
+
+          setHandInfo({
+            ...handInfo,
+            players: newPlayersArray,
+            pot: newPot,
+          });
+        }
+
+        if (isClosingAction) {
+          handleClosingAction(newCurrentOrder);
+          const newStreet = getNextStreet(currentStreet);
+          setCurrentStreet(newStreet);
+        } else {
+          setCurrentOrder(newCurrentOrder);
+          handleAssignNextPlayer();
+        }
+      }
+    }
+  };
 
   const handleAction = (
     actionPlayer: PlayerType | null,
@@ -257,109 +329,48 @@ export const HandProgress: FC = () => {
     playerBet?: string,
   ) => {
     if (actionPlayer) {
-      // handleStoreAction(actionPlayer, action, playerBet);
-
+      // Check if player has closing action
       if (actionPlayer === mainAction?.player && currentOrder) {
-        if (action === HandActionEnum.FOLD || playerBet === mainAction?.bet) {
-          let newPlayerOrder: PlayerType[] = [];
-          if (action === HandActionEnum.FOLD) {
-            // NEED TO ADD HANDLING IF LAST TO ACT FOLDS, EVEN IF CHECKED TOO. Or they are kept in active players array of this hand (this is because that logic is usually handeled in handleAssignNextPlayer).
-            console.log('CALL HERE');
-            const activePlayerIndex = currentOrder.indexOf(actionPlayer);
-            newPlayerOrder = currentOrder.filter(
-              (player, index) => index !== activePlayerIndex,
-            );
-
-            console.log('REFINED ORDER:', newPlayerOrder);
-
-            if (newPlayerOrder.length === 1) {
-              // Check if last player
-              handleHandWon(newPlayerOrder[0]);
-              return;
-            }
-
-            setCurrentOrder([...newPlayerOrder]);
-          }
-
-          if (currentStreet === HandStreetEnum.RIVER) {
-            // Check if reached river, then award winning player pot
-            // TO:DO add proper hand won logic. Placeholder is to just give last player pot
-            handleHandWon(actionPlayer);
-            return;
-          }
-
-          console.log('========== NEW STREET ==========');
-          if (newPlayerOrder.length > 0) {
-            handleClosingAction(newPlayerOrder);
-          } else {
-            handleClosingAction();
-          }
+        if (action === HandActionEnum.FOLD) {
+          handleFold(actionPlayer, true);
+          return;
+        } else if (action === HandActionEnum.CHECK) {
+          handleClosingAction();
           const newStreet = getNextStreet(currentStreet);
           setCurrentStreet(newStreet);
-          // setPlayersAction([]);
+
           return;
+        } else if (
+          action === HandActionEnum.CALL ||
+          action === HandActionEnum.BET
+        ) {
+          handleCallOrBet(
+            actionPlayer,
+            playerBet || '',
+            action === HandActionEnum.BET,
+            true,
+          );
         }
+      }
+
+      if (action === HandActionEnum.CHECK) {
+        handleAssignNextPlayer();
+        return;
+      }
+
+      if (action === HandActionEnum.FOLD) {
+        handleFold(actionPlayer);
+        return;
       }
 
       if (action === HandActionEnum.CALL || action === HandActionEnum.BET) {
-        if (currentOrder) {
-          const playerSeat = actionPlayer.seat;
-
-          const playerInCurrentOrder = currentOrder.find(
-            player => player.seat === playerSeat,
-          );
-
-          if (playerInCurrentOrder) {
-            const playerAdjustedStack = getStackChange(
-              playerInCurrentOrder,
-              playerBet || '',
-            );
-
-            const newCurrentOrder = currentOrder.map(
-              player =>
-                [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
-                player,
-            );
-
-            if (action === HandActionEnum.BET) {
-              const newAction: PlayerAction = {
-                player: actionPlayer,
-                action: HandActionEnum.BET,
-                bet: playerBet || '',
-              };
-
-              setMainAction(newAction);
-            }
-
-            const handInfo = gameContext?.handInfo;
-            const setHandInfo = gameContext?.setHandInfo;
-
-            const newPlayersArray = handInfo?.players.map(
-              player =>
-                [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
-                player,
-            );
-
-            if (handInfo && playerBet && setHandInfo && newPlayersArray) {
-              const newPot = addChips(handInfo.pot, playerBet);
-
-              setHandInfo({
-                ...handInfo,
-                players: newPlayersArray,
-                pot: newPot,
-              });
-            }
-
-            setCurrentOrder(newCurrentOrder);
-
-            handleAssignNextPlayer(action);
-
-            console.log('ADJUSTED STACK, NEW ORDER:', newCurrentOrder);
-          }
-        }
+        handleCallOrBet(
+          actionPlayer,
+          playerBet || '',
+          action === HandActionEnum.BET,
+        );
+        return;
       }
-
-      handleAssignNextPlayer(action);
     }
   };
 
@@ -455,18 +466,6 @@ export const HandProgress: FC = () => {
       setShowBetButton(true);
     }
   }, [playerToAct, currentStreet]);
-
-  // Debug useEffect
-  useEffect(() => {
-    // console.log('PLAYER ACTION ARRAY:', playersAction);
-    console.log('MAIN ACTION:', mainAction);
-  }, [mainAction]);
-
-  // Debug useEffect
-  useEffect(() => {
-    // console.log('PLAYER ACTION ARRAY:', playersAction);
-    console.log('NEW STREET: ', currentStreet);
-  }, [currentStreet]);
 
   return (
     <>
