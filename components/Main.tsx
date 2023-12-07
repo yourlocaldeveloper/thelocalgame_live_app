@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { io } from 'socket.io-client';
 
 import { TopRow } from '@components/organism/TopRow';
@@ -18,6 +18,7 @@ import {
   defaultHandInfo,
   testPlayers,
 } from './GameContext';
+import { SocketContext } from './SocketContext';
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
@@ -28,6 +29,8 @@ export const Main: FC = () => {
     },
   });
 
+  const socket = io('http://10.0.2.2:3000');
+
   const [players, setPlayers] = useState<PlayerType[]>(testPlayers);
   const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);
   const [gameSettings, setGameSettings] =
@@ -36,9 +39,8 @@ export const Main: FC = () => {
 
   const [isConnectedToServer, setIsConnectedToServer] = useState(false);
 
-  const socket = io('http://10.0.2.2:3000');
-
   useEffect(() => {
+    socket.connect();
     console.log('[CONNECTION]: Attempting to connect');
     const onConnect = () => {
       console.log('[CONNECTION]: CONNECTED');
@@ -51,26 +53,34 @@ export const Main: FC = () => {
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.disconnect();
+    };
   }, []);
 
   return (
-    <GameContext.Provider
-      value={{
-        players,
-        setPlayers,
-        gameState,
-        setGameState,
-        gameSettings,
-        setGameSettings,
-        handInfo,
-        setHandInfo,
-      }}>
-      <View style={styles.main}>
-        <TopRow isConnectedToServer={isConnectedToServer} />
-        <TableInfo />
-        <PlayerInfo />
-        <BottomRow />
-      </View>
-    </GameContext.Provider>
+    <SocketContext.Provider value={{ socket }}>
+      <GameContext.Provider
+        value={{
+          players,
+          setPlayers,
+          gameState,
+          setGameState,
+          gameSettings,
+          setGameSettings,
+          handInfo,
+          setHandInfo,
+        }}>
+        <View style={styles.main}>
+          <TopRow isConnectedToServer={isConnectedToServer} />
+          <TableInfo />
+          <PlayerInfo />
+          <BottomRow />
+        </View>
+      </GameContext.Provider>
+    </SocketContext.Provider>
   );
 };

@@ -1,4 +1,4 @@
-import { FC, useContext, useEffect, useState } from 'react';
+import { FC, useCallback, useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,9 @@ import {
   defaultHandInfo,
 } from '@components/GameContext';
 import { Modal } from '@components/atoms/Modal';
-import { NumberPad } from '../NumberPad';
+import { SocketContext } from '@components/SocketContext';
 
+import { NumberPad } from '../NumberPad';
 import {
   styles,
   getPreFlopPlayerOrder,
@@ -28,6 +29,8 @@ import {
   getStackChange,
   getWinningPlayerStack,
   addChips,
+  getCardFromUID,
+  getWinnerOfHand,
 } from './HandProgress.helpers';
 
 interface PlayerAction {
@@ -36,8 +39,17 @@ interface PlayerAction {
   bet: string;
 }
 
+interface IPlayerHand {
+  hand: string[];
+  seat: number;
+  hasCards: boolean;
+}
+
 export const HandProgress: FC = () => {
   const gameContext = useContext(GameContext);
+  const socketContext = useContext(SocketContext);
+
+  const socket = socketContext?.socket;
 
   const [showBetModal, setShowBetModal] = useState(false);
   const [bet, setBet] = useState('');
@@ -64,6 +76,14 @@ export const HandProgress: FC = () => {
   const [showBetButton, setShowBetButton] = useState(true);
   const [showCallButton, setShowCallButton] = useState(true);
 
+  const [playerHandStore, setPlayerHandStore] = useState<IPlayerHand[]>([]);
+  const [communityCardStore, setCommunityCardStore] = useState<string[]>([]);
+
+  const clearStore = () => {
+    setPlayerHandStore([]);
+    setCommunityCardStore([]);
+  };
+
   const handleSetBet = (
     event: NativeSyntheticEvent<TextInputChangeEventData>,
   ) => {
@@ -85,6 +105,46 @@ export const HandProgress: FC = () => {
     closeModal();
   };
 
+  const handleEnableRFID = async () => {
+    const disableRFID = await fetch('http://10.0.2.2:8080/rfid/continue', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    })
+      .then(response => response.json())
+      .then(json => {
+        return json;
+      })
+      .catch(error => {
+        console.error(error);
+      });
+
+    console.log('[RFID]: ENABLED', disableRFID);
+  };
+
+  const handleDisableRFID = async () => {
+    const disableRFID = await fetch('http://10.0.2.2:8080/rfid/stop', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    })
+      .then(response => response.json())
+      .then(json => {
+        return json;
+      })
+      .catch(error => {
+        console.error(error);
+      });
+
+    console.log('[RFID]: DISABLED', disableRFID);
+  };
+
   const handleEndHand = () => {
     gameContext?.setHandInfo({ ...defaultHandInfo });
     gameContext?.setGameState(GameStateEnum.SETUP);
@@ -93,6 +153,7 @@ export const HandProgress: FC = () => {
     setPlayerToAct(null);
     setMainAction(null);
     setPlayersInHand([]);
+    handleDisableRFID();
   };
 
   const handleMissdeal = () => {
@@ -146,7 +207,20 @@ export const HandProgress: FC = () => {
       if (currentStreet === HandStreetEnum.RIVER) {
         // Check if reached river, then award winning player pot
         // TO:DO add proper hand won logic. Placeholder is to just give last player pot
-        handleHandWon(currentOrder[0]);
+
+        const relevantPlayers = playerHandStore.filter(player =>
+          currentOrder.find(ply => ply.seat === player.seat),
+        );
+
+        const hands = relevantPlayers.map(player => [
+          player.hand[0],
+          player.hand[1],
+        ]);
+
+        const returnedVal = getWinnerOfHand(hands, communityCardStore);
+        const winner = returnedVal.getWinner();
+        console.log(winner.player.getHand());
+        handleMissdeal();
         return;
       }
 
@@ -465,6 +539,169 @@ export const HandProgress: FC = () => {
       setShowBetButton(true);
     }
   }, [playerToAct, currentStreet]);
+
+  const handleCommunityCardStore = useCallback(
+    (uid: string, socketRef: string) => {
+      const getLimit = () => {
+        switch (currentStreet) {
+          case HandStreetEnum.PREFLOP:
+            return 0;
+          case HandStreetEnum.FLOP:
+            return 3;
+          case HandStreetEnum.TURN:
+            return 4;
+          case HandStreetEnum.RIVER:
+            return 5;
+          default:
+            return 0;
+        }
+      };
+
+      const limit = getLimit();
+
+      const selectedCard = getCardFromUID(uid);
+
+      const communityStore = [...communityCardStore];
+      const doesCardExist = communityStore.find(card => card === selectedCard);
+
+      if (communityCardStore.length !== limit) {
+        if (!!doesCardExist) {
+          console.log(
+            '[CARD STORE] Community Card Already Exists:',
+            selectedCard,
+          );
+
+          return;
+        }
+        const card = getCardFromUID(uid);
+
+        setCommunityCardStore(currentCommunityCardStore => [
+          ...currentCommunityCardStore,
+          card,
+        ]);
+
+        console.log('[CARD STORE] Adding Community Card:', card);
+      } else {
+        console.log('[CARD STORE] Community Card Limit Reached');
+        socket?.off(socketRef);
+        if (limit !== 0) {
+          console.log('COMMUNITY CARD DISABLE');
+          handleDisableRFID();
+        }
+      }
+    },
+    [communityCardStore, currentStreet],
+  );
+
+  useEffect(() => {
+    handleEnableRFID();
+  }, [currentStreet]);
+
+  const handlePlayerHandStore = useCallback(
+    (uid: string, seat: number, socketRef: string) => {
+      const handStore = [...playerHandStore];
+      const player = handStore.find(player => player.seat === seat);
+      const card = getCardFromUID(uid);
+      let playerHand: IPlayerHand;
+
+      if (player) {
+        const playerHandIndex = handStore.findIndex(
+          player => player.seat === seat,
+        );
+        if (player.hand.length === 2) {
+          socket?.off(socketRef);
+
+          const playersActiveInHand = currentOrder?.length;
+
+          const allHandsWithTwoCards = handStore.filter(
+            player => player.hand.length === 2,
+          );
+
+          if (
+            allHandsWithTwoCards?.length === playersActiveInHand &&
+            currentStreet === HandStreetEnum.PREFLOP
+          ) {
+            console.log('HAND STORE CARD DISABLE');
+            handleDisableRFID();
+          }
+
+          return;
+        } else {
+          if (player?.hand.includes(card)) {
+            console.log('[CARD STORE] Card Already Registered');
+            return;
+          }
+
+          const newPlayerHand = [...player.hand, card];
+
+          playerHand = {
+            hand: newPlayerHand,
+            seat: player.seat,
+            hasCards: player.hasCards,
+          };
+        }
+
+        const newPlayerHandStore = [...handStore];
+        newPlayerHandStore[playerHandIndex] = playerHand;
+
+        setPlayerHandStore(newPlayerHandStore);
+
+        return;
+      } else {
+        const playerHand = {
+          hand: [card],
+          seat: seat,
+          hasCards: false,
+        };
+
+        setPlayerHandStore(currentPlayerHandStore => [
+          ...currentPlayerHandStore,
+          playerHand,
+        ]);
+      }
+    },
+    [playerHandStore, currentOrder, currentStreet, handleDisableRFID],
+  );
+
+  useEffect(() => {
+    socket?.on('seatOne', rfid =>
+      handlePlayerHandStore(rfid.uid, 1, 'seatOne'),
+    );
+    socket?.on('seatTwo', rfid =>
+      handlePlayerHandStore(rfid.uid, 2, 'seatTwo'),
+    );
+    socket?.on('seatThree', rfid =>
+      handlePlayerHandStore(rfid.uid, 3, 'seatThree'),
+    );
+    socket?.on('seatFour', rfid =>
+      handlePlayerHandStore(rfid.uid, 4, 'seatFour'),
+    );
+
+    return () => {
+      socket?.off('seatOne');
+      socket?.off('seatTwo');
+      socket?.off('seatThree');
+      socket?.off('seatFour');
+    };
+  }, [socket, playerHandStore, currentStreet]);
+
+  useEffect(() => {
+    socket?.on('communityCards', rfid =>
+      handleCommunityCardStore(rfid.uid, 'communityCards'),
+    );
+
+    return () => {
+      socket?.off('communityCards');
+    };
+  }, [currentStreet, communityCardStore]);
+
+  useEffect(() => {
+    console.log('[PLAYER HAND STORE]: STORE -', playerHandStore);
+  }, [playerHandStore]);
+
+  useEffect(() => {
+    console.log(communityCardStore);
+  }, [communityCardStore]);
 
   return (
     <>
