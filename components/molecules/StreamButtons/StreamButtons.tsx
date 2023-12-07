@@ -3,7 +3,13 @@ import { FC } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 
-export const StreamButtons: FC = () => {
+interface StreamButtonsProps {
+  isConnectedToServer: boolean;
+}
+
+export const StreamButtons: FC<StreamButtonsProps> = ({
+  isConnectedToServer,
+}) => {
   const styles = StyleSheet.create({
     streamButtons: {
       flex: 1,
@@ -15,7 +21,12 @@ export const StreamButtons: FC = () => {
   return (
     <View style={styles.streamButtons}>
       <AppButton color={ButtonColorEnum.BLUE} text={'RFID Health'} />
-      <AppButton color={ButtonColorEnum.BLUE} text={'Socket IO'} />
+      <AppButton
+        color={
+          isConnectedToServer ? ButtonColorEnum.GREEN : ButtonColorEnum.RED
+        }
+        text={'Socket IO'}
+      />
       <AppButton color={ButtonColorEnum.BLUE} text={'Toggle Stream'} />
       <AppButton color={ButtonColorEnum.BLUE} text={'Hide Camera'} />
     </View>

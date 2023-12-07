@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { io } from 'socket.io-client';
 
 import { TopRow } from '@components/organism/TopRow';
 import { TableInfo } from '@components/organism/TableInfo';
@@ -33,9 +34,24 @@ export const Main: FC = () => {
     useState<GameSettingsType>(defaultGameSettings);
   const [handInfo, setHandInfo] = useState<IHandInfo>(defaultHandInfo);
 
+  const [isConnectedToServer, setIsConnectedToServer] = useState(false);
+
+  const socket = io('http://10.0.2.2:3000');
+
   useEffect(() => {
-    console.log('======= CHANGE TO PLAYERS:', players);
-  }, [players]);
+    console.log('[CONNECTION]: Attempting to connect');
+    const onConnect = () => {
+      console.log('[CONNECTION]: CONNECTED');
+      setIsConnectedToServer(true);
+    };
+
+    const onDisconnect = () => {
+      setIsConnectedToServer(false);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+  }, []);
 
   return (
     <GameContext.Provider
@@ -50,7 +66,7 @@ export const Main: FC = () => {
         setHandInfo,
       }}>
       <View style={styles.main}>
-        <TopRow />
+        <TopRow isConnectedToServer={isConnectedToServer} />
         <TableInfo />
         <PlayerInfo />
         <BottomRow />

@@ -88,7 +88,6 @@ export const HandProgress: FC = () => {
   const handleEndHand = () => {
     gameContext?.setHandInfo({ ...defaultHandInfo });
     gameContext?.setGameState(GameStateEnum.SETUP);
-    // setPlayersAction([]);
     setCurrentStreet(HandStreetEnum.PREFLOP);
     setCurrentOrder(null);
     setPlayerToAct(null);

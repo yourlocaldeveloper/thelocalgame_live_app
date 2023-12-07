@@ -4,7 +4,11 @@ import { StyleSheet, View } from 'react-native';
 import { StreamButtons } from '@components/molecules/StreamButtons';
 import { SettingButtons } from '@components/molecules/SettingButtons';
 
-export const TopRow: FC = () => {
+interface TopRowProps {
+  isConnectedToServer: boolean;
+}
+
+export const TopRow: FC<TopRowProps> = ({ isConnectedToServer }) => {
   const styles = StyleSheet.create({
     topRow: {
       display: 'flex',
@@ -14,7 +18,7 @@ export const TopRow: FC = () => {
 
   return (
     <View style={styles.topRow}>
-      <StreamButtons />
+      <StreamButtons isConnectedToServer={isConnectedToServer} />
       <SettingButtons />
     </View>
   );

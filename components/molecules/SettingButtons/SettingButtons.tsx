@@ -2,7 +2,13 @@ import { FC, useContext, useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
-import { GameContext, GameStateEnum } from '@components/GameContext';
+import {
+  GameContext,
+  GameStateEnum,
+  defaultGameSettings,
+  defaultHandInfo,
+  testPlayers,
+} from '@components/GameContext';
 import { Modal } from '@components/atoms/Modal';
 import { NumberPad } from '@components/molecules/NumberPad';
 
@@ -154,6 +160,13 @@ export const SettingButtons: FC = () => {
     handleSettingsModalClose();
   };
 
+  const handleResetSettings = () => {
+    gameContext?.setGameSettings(defaultGameSettings);
+    gameContext?.setGameState(GameStateEnum.OFF);
+    gameContext?.setHandInfo(defaultHandInfo);
+    gameContext?.setPlayers(testPlayers);
+  };
+
   return (
     <>
       <View style={styles.streamButtons}>
@@ -167,7 +180,11 @@ export const SettingButtons: FC = () => {
         />
         <AppButton color={ButtonColorEnum.BLUE} text={'Register Deck'} />
         {gameContext?.gameState === GameStateEnum.OFF && (
-          <AppButton color={ButtonColorEnum.BLUE} text={'Reset All'} />
+          <AppButton
+            color={ButtonColorEnum.BLUE}
+            text={'Reset All'}
+            onPress={handleResetSettings}
+          />
         )}
         {gameContext?.gameState !== GameStateEnum.OFF && (
           <AppButton
