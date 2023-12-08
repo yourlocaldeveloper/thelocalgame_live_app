@@ -3,8 +3,15 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { GameContext } from '@components/GameContext';
+import { IPlayerHand } from '@components/Main';
 
-export const CardIndicators: FC = () => {
+type CardIndicatorsProps = {
+  playerHandStore: IPlayerHand[];
+};
+
+export const CardIndicators: FC<CardIndicatorsProps> = ({
+  playerHandStore,
+}) => {
   const styles = StyleSheet.create({
     cardIndicators: {
       display: 'flex',
@@ -16,13 +23,16 @@ export const CardIndicators: FC = () => {
   const players = gameContext?.players;
 
   const cardIndicators = players?.map(player => {
-    const hasCards = player.cards?.length === 2;
+    const playerWithHand = playerHandStore.find(
+      ply => ply.seat === player.seat,
+    );
+    const hasCards = playerWithHand?.hand.length === 2;
 
     return (
       <AppButton
         key={player.name}
         color={hasCards ? ButtonColorEnum.GREEN : ButtonColorEnum.RED}
-        text={hasCards ? 'Cards Registered' : 'No Cards'}
+        text={hasCards ? 'Has Cards' : 'No Cards'}
       />
     );
   });

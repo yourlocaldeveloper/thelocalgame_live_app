@@ -1,14 +1,23 @@
-import { FC, useContext, useState } from 'react';
+import React, { FC, useContext, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 
 import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 import { HandSetup } from '@components/molecules/HandSetup';
 import { HandProgress } from '@components/molecules/HandProgress';
 import { GameContext, GameStateEnum } from '@components/GameContext';
+import { IPlayerHand } from '@components/Main';
 
 import { checkActivePlayers } from './BottomRow.helpers';
 
-export const BottomRow: FC = () => {
+type BottomRowProps = {
+  playerHandStore: IPlayerHand[];
+  setPlayerHandStore: React.Dispatch<React.SetStateAction<IPlayerHand[]>>;
+};
+
+export const BottomRow: FC<BottomRowProps> = ({
+  playerHandStore,
+  setPlayerHandStore,
+}) => {
   const styles = StyleSheet.create({
     bottomRow: {
       position: 'absolute',
@@ -41,7 +50,12 @@ export const BottomRow: FC = () => {
   return (
     <View style={styles.bottomRow}>
       {gameContext?.gameState === GameStateEnum.SETUP && <HandSetup />}
-      {gameContext?.gameState === GameStateEnum.PROGRESS && <HandProgress />}
+      {gameContext?.gameState === GameStateEnum.PROGRESS && (
+        <HandProgress
+          playerHandStore={playerHandStore}
+          setPlayerHandStore={setPlayerHandStore}
+        />
+      )}
       {gameContext?.gameState === GameStateEnum.OFF && (
         <View style={styles.startTrackingButton}>
           {showError && (

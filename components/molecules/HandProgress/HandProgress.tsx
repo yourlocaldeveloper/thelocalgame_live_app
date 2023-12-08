@@ -18,6 +18,7 @@ import {
 } from '@components/GameContext';
 import { Modal } from '@components/atoms/Modal';
 import { SocketContext } from '@components/SocketContext';
+import { IPlayerHand } from '@components/Main';
 
 import { NumberPad } from '../NumberPad';
 import {
@@ -39,13 +40,15 @@ interface PlayerAction {
   bet: string;
 }
 
-interface IPlayerHand {
-  hand: string[];
-  seat: number;
-  hasCards: boolean;
-}
+type HandProgressProps = {
+  playerHandStore: IPlayerHand[];
+  setPlayerHandStore: React.Dispatch<React.SetStateAction<IPlayerHand[]>>;
+};
 
-export const HandProgress: FC = () => {
+export const HandProgress: FC<HandProgressProps> = ({
+  playerHandStore,
+  setPlayerHandStore,
+}) => {
   const gameContext = useContext(GameContext);
   const socketContext = useContext(SocketContext);
 
@@ -76,7 +79,6 @@ export const HandProgress: FC = () => {
   const [showBetButton, setShowBetButton] = useState(true);
   const [showCallButton, setShowCallButton] = useState(true);
 
-  const [playerHandStore, setPlayerHandStore] = useState<IPlayerHand[]>([]);
   const [communityCardStore, setCommunityCardStore] = useState<string[]>([]);
 
   const clearStore = () => {
@@ -153,6 +155,7 @@ export const HandProgress: FC = () => {
     setPlayerToAct(null);
     setMainAction(null);
     setPlayersInHand([]);
+    clearStore();
     handleDisableRFID();
   };
 
@@ -170,17 +173,17 @@ export const HandProgress: FC = () => {
     console.log('[INFO] Player Won:', winningPlayer.name);
     const handContext = gameContext?.handInfo;
 
-    if (handContext?.players && currentOrder) {
+    if (playersInHand && currentOrder) {
       const playerInCurrentOrder = currentOrder.find(
         player => player.seat === winningPlayer.seat,
       );
 
-      const playerArray = handContext?.players;
+      const playerArray = playersInHand;
 
       if (playerInCurrentOrder) {
         const playerAdjustedStack = getWinningPlayerStack(
           playerInCurrentOrder,
-          handContext.pot || '',
+          handContext?.pot || '',
         );
 
         const handWonPlayerArray = playerArray.map(
@@ -219,7 +222,44 @@ export const HandProgress: FC = () => {
 
         const returnedVal = getWinnerOfHand(hands, communityCardStore);
         const winner = returnedVal.getWinner();
-        console.log(winner.player.getHand());
+        const winningHand = winner.player.getHand();
+
+        if (winningHand) {
+          console.log('[INFO] Winning Hand:', winningHand);
+
+          console.log('[INFO] relevantPlayers:', relevantPlayers);
+
+          const winningPlayer = relevantPlayers.find(player => {
+            const playerHand = player.hand.join('');
+            console.log(playerHand);
+            return playerHand === winningHand;
+          });
+
+          console.log('[INFO] Winning Player:', winningPlayer);
+
+          const winningPlayerInfo = currentOrder.find(
+            player => player.seat === winningPlayer?.seat,
+          );
+
+          console.log(
+            '[INFO] Winning Player in Current Order:',
+            winningPlayerInfo,
+          );
+
+          if (winningPlayerInfo) {
+            console.log('[HAND WON]: Winner Identified');
+            handleHandWon(winningPlayerInfo);
+          } else {
+            console.log(
+              '[ERROR]: Could not figure winningPlayerInfo. Missdeal.',
+            );
+            handleMissdeal();
+          }
+
+          return;
+        }
+
+        console.log('[ERROR]: Could not figure out winner. Missdeal.');
         handleMissdeal();
         return;
       }
@@ -368,7 +408,7 @@ export const HandProgress: FC = () => {
         const handInfo = gameContext?.handInfo;
         const setHandInfo = gameContext?.setHandInfo;
 
-        const newPlayersArray = handInfo?.players.map(
+        const newPlayersArray = playersInHand?.map(
           player =>
             [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
             player,
@@ -376,6 +416,8 @@ export const HandProgress: FC = () => {
 
         if (handInfo && playerBet && setHandInfo && newPlayersArray) {
           const newPot = addChips(handInfo.pot, playerBet);
+
+          setPlayersInHand(playersInHand);
 
           setHandInfo({
             ...handInfo,
@@ -456,9 +498,7 @@ export const HandProgress: FC = () => {
     // Setup backups and stack adjustment arrays
     if (gameContext?.players) {
       const players = [...gameContext.players];
-      const handPlayers = [...gameContext.players];
       setBackUpPlayerInfo([...players]);
-      setPlayersInHand([...handPlayers]);
     }
 
     if (handInfo && smallBlind && bigBlind) {
@@ -493,9 +533,14 @@ export const HandProgress: FC = () => {
         player => blinds.find(ply => ply.seat === player.seat) || player,
       );
 
+      const playersAdjustedAllPlayersWithBlinds = gameContext.players.map(
+        player => blinds.find(ply => ply.seat === player.seat) || player,
+      );
+
       const setHandInfo = gameContext.setHandInfo;
 
       setHandInfo({ ...handInfo, players: playersAdjustedWithBlinds });
+      setPlayersInHand(playersAdjustedAllPlayersWithBlinds);
 
       console.log('Initial Pre Flop Order', preFlopOrder);
       setMainAction(defaultAction);
@@ -713,7 +758,9 @@ export const HandProgress: FC = () => {
           </Text>
         </View>
         <View style={styles.communityCardsWrapper}>
-          <Text style={styles.actionIndicatorText}>Ac Ad Ah As Jc</Text>
+          <Text style={styles.actionIndicatorText}>
+            {communityCardStore.join(' ')}
+          </Text>
         </View>
         <View style={styles.actionIndicatorWrapper}>
           <Text style={styles.actionIndicatorText}>

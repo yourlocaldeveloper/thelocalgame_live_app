@@ -4,8 +4,13 @@ import { StyleSheet, View } from 'react-native';
 import { CardIndicators } from '@components/molecules/CardIndicators';
 import { PlayerButtons } from '@components/molecules/PlayerButtons';
 import { StackIndicators } from '@components/molecules/StackIndicators';
+import { IPlayerHand } from '@components/Main';
 
-export const PlayerInfo: FC = () => {
+type PlayerInfoProps = {
+  playerHandStore: IPlayerHand[];
+};
+
+export const PlayerInfo: FC<PlayerInfoProps> = ({ playerHandStore }) => {
   const styles = StyleSheet.create({
     playerInfo: {
       display: 'flex',
@@ -16,7 +21,7 @@ export const PlayerInfo: FC = () => {
 
   return (
     <View style={styles.playerInfo}>
-      <CardIndicators />
+      <CardIndicators playerHandStore={playerHandStore} />
       <PlayerButtons />
       <StackIndicators />
     </View>

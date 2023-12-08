@@ -20,6 +20,12 @@ import {
 } from './GameContext';
 import { SocketContext } from './SocketContext';
 
+export interface IPlayerHand {
+  hand: string[];
+  seat: number;
+  hasCards: boolean;
+}
+
 export const Main: FC = () => {
   const styles = StyleSheet.create({
     main: {
@@ -36,6 +42,8 @@ export const Main: FC = () => {
   const [gameSettings, setGameSettings] =
     useState<GameSettingsType>(defaultGameSettings);
   const [handInfo, setHandInfo] = useState<IHandInfo>(defaultHandInfo);
+
+  const [playerHandStore, setPlayerHandStore] = useState<IPlayerHand[]>([]);
 
   const [isConnectedToServer, setIsConnectedToServer] = useState(false);
 
@@ -77,8 +85,11 @@ export const Main: FC = () => {
         <View style={styles.main}>
           <TopRow isConnectedToServer={isConnectedToServer} />
           <TableInfo />
-          <PlayerInfo />
-          <BottomRow />
+          <PlayerInfo playerHandStore={playerHandStore} />
+          <BottomRow
+            playerHandStore={playerHandStore}
+            setPlayerHandStore={setPlayerHandStore}
+          />
         </View>
       </GameContext.Provider>
     </SocketContext.Provider>
