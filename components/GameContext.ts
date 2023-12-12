@@ -32,7 +32,6 @@ export type PlayerType = {
   stack?: string;
   active: boolean;
   seat: number;
-  cards?: Card[];
 };
 
 export enum PokerVariantEnum {
@@ -61,6 +60,7 @@ export enum HandStreetEnum {
   FLOP = 'flop',
   TURN = 'turn',
   RIVER = 'river',
+  ALLIN = 'allin',
 }
 
 export enum HandActionEnum {
@@ -69,6 +69,7 @@ export enum HandActionEnum {
   CHECK = 'check',
   CALL = 'call',
   BET = 'bet',
+  ALLIN = 'allin',
 }
 
 export interface IHandInfo {

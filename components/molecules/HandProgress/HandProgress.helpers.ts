@@ -1,7 +1,34 @@
 import { StyleSheet } from 'react-native';
 import { TexasHoldem } from 'poker-odds-calc';
 
-import { PlayerType, HandStreetEnum } from '@components/GameContext';
+import {
+  PlayerType,
+  HandStreetEnum,
+  HandActionEnum,
+} from '@components/GameContext';
+
+export type ActionType = {
+  seat: number;
+  type: HandActionEnum;
+  bet?: string;
+};
+
+export type HandPlayerType = {
+  name: string;
+  stack: string;
+  seat: number;
+  action: ActionType;
+};
+
+export interface IHandData {
+  activeOrder: HandPlayerType[];
+  allInPlayerCount: Number;
+  backUpPlayerInfo: PlayerType[];
+  currentStreet: HandStreetEnum;
+  effectiveAction: ActionType;
+  pot: string;
+  playerToAct: HandPlayerType;
+}
 
 export const styles = StyleSheet.create({
   handProgress: {
@@ -110,14 +137,23 @@ export const styles = StyleSheet.create({
 
 // Helper function to getPreFlopPlayerOrder, getPostFlopPlayerOrder
 const getOrderedPlayerList = (players: PlayerType[], index: number) => {
-  const maxPlayerIndex = players.length;
+  const newPlayerArray: HandPlayerType[] = players.map(player => {
+    return {
+      name: player.name,
+      stack: player.stack || '',
+      seat: player.seat,
+      action: { seat: player.seat, type: HandActionEnum.NON },
+    };
+  });
+
+  const maxPlayerIndex = newPlayerArray.length;
 
   if (maxPlayerIndex < index) {
-    return players
+    return newPlayerArray
       .slice(index - maxPlayerIndex)
-      .concat(players.slice(0, index - maxPlayerIndex));
+      .concat(newPlayerArray.slice(0, index - maxPlayerIndex));
   } else {
-    return players.slice(index).concat(players.slice(0, index));
+    return newPlayerArray.slice(index).concat(newPlayerArray.slice(0, index));
   }
 };
 
@@ -144,7 +180,7 @@ export const getPostFlopPlayerOrder = (
 // Gets next player to act
 export const getNextToAct = (
   currentPlayer: number,
-  playersInHand: PlayerType[],
+  playersInHand: HandPlayerType[],
 ) => {
   if (playersInHand.length === currentPlayer + 1) {
     return playersInHand[0];
@@ -154,22 +190,25 @@ export const getNextToAct = (
 };
 
 // Adjusts players stack
-export const getStackChange = (player: PlayerType, bet: string): PlayerType => {
+export const getStackChange = (
+  player: HandPlayerType,
+  bet: string,
+): HandPlayerType => {
   const newStack = player.stack ? removeChips(player.stack, bet) : 'error';
 
-  const newPlayerInfo: PlayerType = { ...player, stack: newStack };
+  const newPlayerInfo: HandPlayerType = { ...player, stack: newStack };
 
   return newPlayerInfo;
 };
 
 // Award winning player pot
 export const getWinningPlayerStack = (
-  player: PlayerType,
+  player: HandPlayerType,
   pot: string,
-): PlayerType => {
+): HandPlayerType => {
   const newStack = player.stack ? addChips(player.stack, pot) : 'error';
 
-  const newPlayerInfo: PlayerType = { ...player, stack: newStack };
+  const newPlayerInfo: HandPlayerType = { ...player, stack: newStack };
 
   return newPlayerInfo;
 };
@@ -435,4 +474,44 @@ export const getWinnerOfHand = (players: string[][], board: string[]) => {
   const winner = Result.getWinner();
 
   return Result;
+};
+
+export const handleEnableRFID = async () => {
+  const disableRFID = await fetch('http://10.0.2.2:8080/rfid/continue', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+    .then(response => response.json())
+    .then(json => {
+      return json;
+    })
+    .catch(error => {
+      console.error(error);
+    });
+
+  console.log('[RFID]: ENABLED', disableRFID);
+};
+
+export const handleDisableRFID = async () => {
+  const disableRFID = await fetch('http://10.0.2.2:8080/rfid/stop', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+    .then(response => response.json())
+    .then(json => {
+      return json;
+    })
+    .catch(error => {
+      console.error(error);
+    });
+
+  console.log('[RFID]: DISABLED', disableRFID);
 };

@@ -32,13 +32,12 @@ import {
   addChips,
   getCardFromUID,
   getWinnerOfHand,
+  handleDisableRFID,
+  handleEnableRFID,
+  IHandData,
+  ActionType,
+  HandPlayerType,
 } from './HandProgress.helpers';
-
-interface PlayerAction {
-  player?: PlayerType;
-  action: HandActionEnum;
-  bet: string;
-}
 
 type HandProgressProps = {
   playerHandStore: IPlayerHand[];
@@ -57,29 +56,12 @@ export const HandProgress: FC<HandProgressProps> = ({
   const [showBetModal, setShowBetModal] = useState(false);
   const [bet, setBet] = useState('');
 
-  const [playerToAct, setPlayerToAct] = useState<PlayerType | null>(null);
-  const [currentOrder, setCurrentOrder] = useState<PlayerType[] | null>(null);
-  const [currentStreet, setCurrentStreet] = useState<HandStreetEnum>(
-    HandStreetEnum.PREFLOP,
-  );
-
-  // Indicated action path + main action (usually agressive or non)
-  const [mainAction, setMainAction] = useState<PlayerAction | null>(null);
-
-  // Player info store + backup for stack adjustments
-  const [playersInHand, setPlayersInHand] = useState<PlayerType[] | undefined>(
-    [],
-  );
-  const [backUpPlayerInfo, setBackUpPlayerInfo] = useState<
-    PlayerType[] | undefined
-  >([]);
-
   // No showFoldButton useState because if player has action they can always fold
   const [showCheckButton, setShowCheckButton] = useState(true);
   const [showBetButton, setShowBetButton] = useState(true);
   const [showCallButton, setShowCallButton] = useState(true);
 
-  const [communityCardStore, setCommunityCardStore] = useState<string[]>([]);
+  const [handData, setHandData] = useState<IHandData | null>(null);
 
   const clearStore = () => {
     setPlayerHandStore([]);
@@ -102,65 +84,114 @@ export const HandProgress: FC<HandProgressProps> = ({
     setShowBetModal(true);
   };
 
-  const handleBetSubmit = () => {
-    handleAction(playerToAct, HandActionEnum.BET, bet);
-    closeModal();
+  // BIG FUCKING NOTE
+  // TO RESOLVE ALL PLAYERS AND ACTIVE ORDER STACK SYNC
+  // Never adjust players stack until change of street
+
+  const handleHandWon = (winningPlayer: HandPlayerType) => {
+    console.log('[INFO] Player Won:', winningPlayer.name);
+    if (handData) {
+      const { activeOrder, pot } = handData;
+      const setPlayers = gameContext?.setPlayers;
+      const corePlayers = gameContext?.players;
+
+      const playerInCurrentOrder = activeOrder.find(
+        player => player.seat === winningPlayer.seat,
+      );
+
+      if (playerInCurrentOrder && corePlayers) {
+        const playerAdjustedStack = getWinningPlayerStack(
+          playerInCurrentOrder,
+          pot,
+        );
+
+        const adjustedAllPlayers = activeOrder.map(
+          player =>
+            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
+            player,
+        );
+
+        const newAllPlayers = corePlayers.map(corePlayer => {
+          const playerFound = adjustedAllPlayers.find(
+            player => player.seat === corePlayer.seat,
+          );
+
+          if (playerFound) {
+            corePlayer.stack = playerFound.stack;
+          }
+
+          return corePlayer;
+        });
+
+        if (setPlayers) {
+          setPlayers(newAllPlayers);
+        }
+      }
+    }
+
+    handleEndHand();
   };
 
-  const handleEnableRFID = async () => {
-    const disableRFID = await fetch('http://10.0.2.2:8080/rfid/continue', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({}),
-    })
-      .then(response => response.json())
-      .then(json => {
-        return json;
-      })
-      .catch(error => {
-        console.error(error);
-      });
+  // Function: handleFindWinner
+  const handleFindWinner = () => {
+    if (handData) {
+      const { activeOrder } = handData;
 
-    console.log('[RFID]: ENABLED', disableRFID);
-  };
+      const playersLeft = playerHandStore.filter(player =>
+        activeOrder.find(ply => ply.seat === player.seat),
+      );
 
-  const handleDisableRFID = async () => {
-    const disableRFID = await fetch('http://10.0.2.2:8080/rfid/stop', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({}),
-    })
-      .then(response => response.json())
-      .then(json => {
-        return json;
-      })
-      .catch(error => {
-        console.error(error);
-      });
+      const hands = playersLeft.map(player => [player.hand[0], player.hand[1]]);
 
-    console.log('[RFID]: DISABLED', disableRFID);
+      const hand = getWinnerOfHand(hands, communityCardStore);
+      const winner = hand.getWinner();
+      const winningHand = winner.player.getHand();
+
+      if (winningHand) {
+        console.log('[INFO] Winning Hand:', winningHand);
+        console.log('[INFO] playersLeft:', playersLeft);
+
+        const winningPlayer = playersLeft.find(player => {
+          const playerHand = player.hand.join('');
+          console.log(`[INFO] Players Winning Hand: ${playerHand}`);
+          return playerHand === winningHand;
+        });
+
+        const winningPlayerData = activeOrder.find(
+          player => player.seat === winningPlayer?.seat,
+        );
+
+        console.log(
+          '[INFO] Winning Player in Current Order:',
+          winningPlayerData,
+        );
+
+        if (winningPlayerData) {
+          console.log('[HAND WON]: Winner Identified');
+          handleHandWon(winningPlayerData);
+        } else {
+          console.log('[ERROR]: Could not figure winningPlayerInfo. Missdeal.');
+          handleMissdeal();
+        }
+      } else {
+        console.log('[ERROR]: Could not figure out winner. Missdeal.');
+        handleMissdeal();
+      }
+    }
   };
 
   const handleEndHand = () => {
     gameContext?.setHandInfo({ ...defaultHandInfo });
     gameContext?.setGameState(GameStateEnum.SETUP);
-    setCurrentStreet(HandStreetEnum.PREFLOP);
-    setCurrentOrder(null);
-    setPlayerToAct(null);
-    setMainAction(null);
-    setPlayersInHand([]);
+    setHandData(null);
     clearStore();
     handleDisableRFID();
   };
 
   const handleMissdeal = () => {
-    if (backUpPlayerInfo) {
+    if (handData) {
+      const { backUpPlayerInfo } = handData;
+
       console.log(`[ERROR]: MISSDEAL - BACKUP USED`);
       gameContext?.setPlayers(backUpPlayerInfo);
     }
@@ -168,291 +199,292 @@ export const HandProgress: FC<HandProgressProps> = ({
     handleEndHand();
   };
 
-  // TO-DO: Show winner and alocate pot to them, update everything and have modal to confirm winner.
-  const handleHandWon = (winningPlayer: PlayerType) => {
-    console.log('[INFO] Player Won:', winningPlayer.name);
-    const handContext = gameContext?.handInfo;
+  const [communityCardStore, setCommunityCardStore] = useState<string[]>([]);
 
-    if (playersInHand && currentOrder) {
-      const playerInCurrentOrder = currentOrder.find(
-        player => player.seat === winningPlayer.seat,
-      );
-
-      const playerArray = playersInHand;
-
-      if (playerInCurrentOrder) {
-        const playerAdjustedStack = getWinningPlayerStack(
-          playerInCurrentOrder,
-          handContext?.pot || '',
-        );
-
-        const handWonPlayerArray = playerArray.map(
-          player =>
-            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
-            player,
-        );
-
-        if (gameContext?.setPlayers) {
-          gameContext.setPlayers(handWonPlayerArray);
-        }
-      }
-    }
-
-    handleEndHand();
-  };
-
-  const handleClosingAction = (order?: PlayerType[]) => {
-    if (currentOrder) {
-      const handInfo = gameContext?.handInfo;
-      const playerWithButton = handInfo?.players[handInfo.dealerPosition];
-      const originalPlayerOrder = handInfo?.players;
+  const handleClosingAction = (handDataOverwrite?: IHandData) => {
+    if (handData && gameContext) {
+      const handInfo = gameContext.handInfo;
+      const playerWithButton = handInfo.players[handInfo.dealerPosition];
+      const originalPlayerOrder = handInfo.players;
+      const { currentStreet, activeOrder } = handDataOverwrite
+        ? handDataOverwrite
+        : handData;
 
       if (currentStreet === HandStreetEnum.RIVER) {
         // Check if reached river, then award winning player pot
         // TO:DO add proper hand won logic. Placeholder is to just give last player pot
 
-        const relevantPlayers = playerHandStore.filter(player =>
-          currentOrder.find(ply => ply.seat === player.seat),
-        );
-
-        const hands = relevantPlayers.map(player => [
-          player.hand[0],
-          player.hand[1],
-        ]);
-
-        const returnedVal = getWinnerOfHand(hands, communityCardStore);
-        const winner = returnedVal.getWinner();
-        const winningHand = winner.player.getHand();
-
-        if (winningHand) {
-          console.log('[INFO] Winning Hand:', winningHand);
-
-          console.log('[INFO] relevantPlayers:', relevantPlayers);
-
-          const winningPlayer = relevantPlayers.find(player => {
-            const playerHand = player.hand.join('');
-            console.log(playerHand);
-            return playerHand === winningHand;
-          });
-
-          console.log('[INFO] Winning Player:', winningPlayer);
-
-          const winningPlayerInfo = currentOrder.find(
-            player => player.seat === winningPlayer?.seat,
-          );
-
-          console.log(
-            '[INFO] Winning Player in Current Order:',
-            winningPlayerInfo,
-          );
-
-          if (winningPlayerInfo) {
-            console.log('[HAND WON]: Winner Identified');
-            handleHandWon(winningPlayerInfo);
-          } else {
-            console.log(
-              '[ERROR]: Could not figure winningPlayerInfo. Missdeal.',
-            );
-            handleMissdeal();
-          }
-
-          return;
-        }
-
-        console.log('[ERROR]: Could not figure out winner. Missdeal.');
-        handleMissdeal();
+        handleFindWinner();
         return;
       }
 
-      if (playerWithButton && originalPlayerOrder) {
-        // Run if order not provided
-        if (!order) {
-          let orderWithActivePlayers;
-          if (currentStreet === HandStreetEnum.PREFLOP) {
-            const postFlopOrder = getPostFlopPlayerOrder(
-              playerWithButton,
-              originalPlayerOrder,
-            );
-            orderWithActivePlayers = postFlopOrder.filter(player =>
-              currentOrder.find(ply => ply.seat === player.seat),
-            );
-          } else {
-            orderWithActivePlayers = currentOrder;
-          }
-          setMainAction({
-            bet: '',
-            action: HandActionEnum.NON,
-            player: orderWithActivePlayers[orderWithActivePlayers.length - 1],
-          });
-          setPlayerToAct(orderWithActivePlayers[0]);
-          setCurrentOrder(orderWithActivePlayers);
-        } else {
-          let orderWithActivePlayers;
+      // Run if order not provided
+      let orderWithActivePlayers: HandPlayerType[];
+      if (currentStreet === HandStreetEnum.PREFLOP) {
+        const postFlopOrder = getPostFlopPlayerOrder(
+          playerWithButton,
+          originalPlayerOrder,
+        );
+        orderWithActivePlayers = postFlopOrder.filter(player =>
+          activeOrder.find(ply => ply.seat === player.seat),
+        );
 
-          if (currentStreet === HandStreetEnum.PREFLOP) {
-            const postFlopOrder = getPostFlopPlayerOrder(
-              playerWithButton,
-              originalPlayerOrder,
+        if (orderWithActivePlayers) {
+          orderWithActivePlayers = orderWithActivePlayers.map(player => {
+            const playerFound = activeOrder.find(
+              ply => ply.seat === player.seat,
             );
-            orderWithActivePlayers = postFlopOrder.filter(player =>
-              order.find(ply => ply.seat === player.seat),
-            );
-          } else {
-            orderWithActivePlayers = order;
-          }
-          setMainAction({
-            bet: '',
-            action: HandActionEnum.NON,
-            player: orderWithActivePlayers[orderWithActivePlayers.length - 1],
+
+            let resetPlayerAction = HandActionEnum.NON;
+
+            if (
+              playerFound?.action.type === HandActionEnum.FOLD ||
+              playerFound?.action.type === HandActionEnum.ALLIN
+            ) {
+              resetPlayerAction = playerFound?.action.type;
+            }
+
+            const newPlayerAction: ActionType = {
+              seat: playerFound ? playerFound?.seat : 0,
+              type: resetPlayerAction,
+              bet: '0.00',
+            };
+
+            if (playerFound) {
+              player.stack = playerFound.stack;
+              player.action = newPlayerAction;
+            }
+            return player;
           });
-          setPlayerToAct(orderWithActivePlayers[0]);
-          setCurrentOrder(orderWithActivePlayers);
         }
+      } else {
+        orderWithActivePlayers = activeOrder;
       }
+
+      const newStreet = getNextStreet(currentStreet);
+      const startingPlayer = orderWithActivePlayers.find(
+        player => player.action.type !== HandActionEnum.FOLD,
+      );
+
+      const reverseArray = [...orderWithActivePlayers];
+
+      const endingPlayer = reverseArray
+        .reverse()
+        .find(player => player.action.type !== HandActionEnum.FOLD);
+
+      const newMainAction: ActionType = endingPlayer
+        ? { seat: endingPlayer.seat, type: HandActionEnum.NON }
+        : {
+            seat: orderWithActivePlayers[orderWithActivePlayers.length - 1]
+              .seat,
+            type: HandActionEnum.NON,
+          };
+
+      handDataOverwrite
+        ? setHandData({
+            ...handDataOverwrite,
+            effectiveAction: newMainAction,
+            activeOrder: orderWithActivePlayers,
+            currentStreet: newStreet,
+            playerToAct: startingPlayer || orderWithActivePlayers[0],
+          })
+        : setHandData({
+            ...handData,
+            effectiveAction: newMainAction,
+            activeOrder: orderWithActivePlayers,
+            currentStreet: newStreet,
+            playerToAct: startingPlayer || orderWithActivePlayers[0],
+          });
     }
   };
 
-  const handleAssignNextPlayer = (order?: PlayerType[]) => {
-    if (currentOrder && playerToAct) {
-      const activePlayerIndex = currentOrder.indexOf(playerToAct);
-      const nextPlayer = getNextToAct(activePlayerIndex, currentOrder);
+  // FUNCTION: Handling assigning the next player //
+  const handleAssignNextPlayer = (handDataOverride?: IHandData) => {
+    if (handData) {
+      const { activeOrder, playerToAct, effectiveAction } = handDataOverride
+        ? handDataOverride
+        : handData;
 
-      if (mainAction?.player && nextPlayer.seat === mainAction?.player.seat) {
-        if (mainAction.action !== HandActionEnum.NON) {
+      const targetedPlayer = activeOrder.find(
+        player => player.seat === playerToAct.seat,
+      );
+
+      const activePlayerIndex = activeOrder.indexOf(
+        targetedPlayer || playerToAct,
+      );
+
+      let nextPlayer = getNextToAct(activePlayerIndex, activeOrder);
+
+      const nextPlayerStack = Number(nextPlayer.stack);
+
+      const { seat: actionSeat, type: actionType } = effectiveAction;
+
+      if (actionType && actionSeat === nextPlayer.seat) {
+        if (actionType !== HandActionEnum.NON || nextPlayerStack === 0) {
           console.log(
             '[CLOSING ACTION]: Next player has no action, new street.',
           );
 
-          handleClosingAction(order);
-          const newStreet = getNextStreet(currentStreet);
-          setCurrentStreet(newStreet);
+          handDataOverride
+            ? handleClosingAction(handDataOverride)
+            : handleClosingAction(handData);
           return;
         }
       }
 
-      console.log(`[INFO]: New Player To Act ${nextPlayer.name}`);
-
-      if (order) {
-        setCurrentOrder(order);
+      if (nextPlayerStack === 0) {
+        console.log(
+          '[HANDLE NEXT PLAYER]: Play has no stack, skipping to next play.',
+        );
+        const skippedPlayerIndex = activeOrder.indexOf(nextPlayer);
+        nextPlayer = getNextToAct(skippedPlayerIndex, activeOrder);
       }
-      setPlayerToAct(nextPlayer);
+
+      const updatedHandData = handDataOverride
+        ? { ...handDataOverride, playerToAct: nextPlayer }
+        : { ...handData, playerToAct: nextPlayer };
+
+      if (nextPlayer.action.type === HandActionEnum.FOLD) {
+        handleAssignNextPlayer(updatedHandData);
+      } else {
+        setHandData(updatedHandData);
+      }
+    } else {
+      console.log('[ERROR]: Hand Data does not exist');
     }
   };
 
+  // FUNCTION: Handling Folding //
   const handleFold = (
-    actionPlayer: PlayerType | null,
+    actionPlayer: HandPlayerType,
     isClosingAction?: boolean,
   ) => {
-    console.log(`[PLAYER ACTION]: ${actionPlayer?.name} FOLDS`);
-    if (actionPlayer && currentOrder) {
-      let newPlayerOrder: PlayerType[] = [];
-      const activePlayerIndex = currentOrder.indexOf(actionPlayer);
-      newPlayerOrder = currentOrder.filter(
-        (player, index) => index !== activePlayerIndex,
+    if (handData) {
+      const { activeOrder, currentStreet } = handData;
+
+      const foldingPlayerIndex = activeOrder.indexOf(actionPlayer);
+
+      const newActiveOrder = activeOrder.map((player, index) => {
+        if (index === foldingPlayerIndex) {
+          player.action = {
+            seat: player.seat,
+            type: HandActionEnum.FOLD,
+          };
+        }
+        return player;
+      });
+
+      const filteredPlayerOrder = newActiveOrder.filter(
+        player => player.action.type !== HandActionEnum.FOLD,
       );
 
-      if (newPlayerOrder.length === 1) {
-        // Check if last player
-        handleHandWon(newPlayerOrder[0]);
+      if (filteredPlayerOrder.length === 1) {
+        handleHandWon(filteredPlayerOrder[0]);
         return;
       }
 
-      if (isClosingAction) {
-        handleClosingAction(newPlayerOrder);
-        const newStreet = getNextStreet(currentStreet);
-        setCurrentStreet(newStreet);
+      if (!isClosingAction) {
+        handleAssignNextPlayer({ ...handData, activeOrder: newActiveOrder });
       } else {
-        handleAssignNextPlayer([...newPlayerOrder]);
+        const nextStreet = getNextStreet(currentStreet);
+        setHandData({
+          ...handData,
+          activeOrder: newActiveOrder,
+          currentStreet: nextStreet,
+        });
       }
+    } else {
+      console.log('[ERROR]: Hand Data does not exist');
     }
   };
 
   const handleCallOrBet = (
-    actionPlayer: PlayerType,
+    actionPlayer: HandPlayerType,
     playerBet: string,
     isBet?: boolean,
     isClosingAction?: boolean,
   ) => {
-    console.log(
-      `[PLAYER ACTION]: ${actionPlayer?.name} HAS PUT IN ${playerBet}`,
-    );
-    const playerSeat = actionPlayer.seat;
+    if (handData) {
+      console.log(
+        `[PLAYER ACTION]: ${actionPlayer?.name} HAS PUT IN ${playerBet}`,
+      );
+      const playerSeat = actionPlayer.seat;
 
-    if (currentOrder) {
-      const playerInCurrentOrder = currentOrder.find(
+      const { activeOrder, pot } = handData;
+
+      const playerInCurrentOrder = activeOrder.find(
         player => player.seat === playerSeat,
       );
 
       if (playerInCurrentOrder) {
-        const playerAdjustedStack = getStackChange(
+        console.log('[ACTION]: Is Call/Bet --- Adjust stack');
+        let adjustedPlayerBet = playerBet;
+        if (actionPlayer.action.bet) {
+          adjustedPlayerBet = String(
+            (Number(playerBet) - Number(actionPlayer.action.bet)).toFixed(2),
+          );
+        }
+
+        let playerAdjustedStack = getStackChange(
           playerInCurrentOrder,
-          playerBet || '',
+          adjustedPlayerBet || '',
         );
 
-        const newCurrentOrder = currentOrder.map(
+        let playerAction = isBet ? HandActionEnum.BET : HandActionEnum.CALL;
+
+        if (Number(playerAdjustedStack.stack) === 0) {
+          playerAction = HandActionEnum.ALLIN;
+        }
+
+        const newAction: ActionType = {
+          seat: actionPlayer.seat,
+          type: playerAction,
+          bet: playerBet || '',
+        };
+
+        playerAdjustedStack.action = newAction;
+
+        const newCurrentOrder = activeOrder.map(
           player =>
             [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
             player,
         );
 
-        if (isBet) {
-          const newAction: PlayerAction = {
-            player: actionPlayer,
-            action: HandActionEnum.BET,
-            bet: playerBet || '',
-          };
-
-          setMainAction(newAction);
-        }
-
-        const handInfo = gameContext?.handInfo;
-        const setHandInfo = gameContext?.setHandInfo;
-
-        const newPlayersArray = playersInHand?.map(
-          player =>
-            [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
-            player,
-        );
-
-        if (handInfo && playerBet && setHandInfo && newPlayersArray) {
-          const newPot = addChips(handInfo.pot, playerBet);
-
-          setPlayersInHand(playersInHand);
-
-          setHandInfo({
-            ...handInfo,
-            players: newPlayersArray,
-            pot: newPot,
-          });
-        }
+        const newPot = addChips(pot, adjustedPlayerBet);
 
         if (isClosingAction) {
-          handleClosingAction(newCurrentOrder);
-          const newStreet = getNextStreet(currentStreet);
-          setCurrentStreet(newStreet);
+          handleClosingAction({
+            ...handData,
+            activeOrder: newCurrentOrder,
+            pot: newPot,
+            effectiveAction: isBet ? newAction : handData.effectiveAction,
+          });
         } else {
-          setCurrentOrder(newCurrentOrder);
-          handleAssignNextPlayer();
+          handleAssignNextPlayer({
+            ...handData,
+            activeOrder: newCurrentOrder,
+            pot: newPot,
+            effectiveAction: isBet ? newAction : handData.effectiveAction,
+          });
         }
       }
     }
   };
 
   const handleAction = (
-    actionPlayer: PlayerType | null,
+    actionPlayer: HandPlayerType,
     action: HandActionEnum,
     playerBet?: string,
   ) => {
-    if (actionPlayer) {
-      // Check if player has closing action
-      if (actionPlayer === mainAction?.player && currentOrder) {
+    if (handData && actionPlayer) {
+      const { effectiveAction } = handData;
+
+      if (actionPlayer.seat === effectiveAction.seat) {
         if (action === HandActionEnum.FOLD) {
           handleFold(actionPlayer, true);
           return;
         } else if (action === HandActionEnum.CHECK) {
           handleClosingAction();
-          const newStreet = getNextStreet(currentStreet);
-          setCurrentStreet(newStreet);
 
           return;
         } else if (
@@ -489,22 +521,24 @@ export const HandProgress: FC<HandProgressProps> = ({
     }
   };
 
+  const handleBetSubmit = () => {
+    if (handData) {
+      const { playerToAct } = handData;
+      handleAction(playerToAct, HandActionEnum.BET, bet);
+      closeModal();
+    }
+  };
+
   // Initial hand set up.
   useEffect(() => {
-    const handInfo = gameContext?.handInfo;
-    const bigBlind = gameContext?.gameSettings.bigBlind;
-    const smallBlind = gameContext?.gameSettings.smallBlind;
+    if (gameContext) {
+      const handInfo = gameContext.handInfo;
+      const bigBlind = gameContext.gameSettings.bigBlind;
+      const smallBlind = gameContext.gameSettings.smallBlind;
 
-    // Setup backups and stack adjustment arrays
-    if (gameContext?.players) {
-      const players = [...gameContext.players];
-      setBackUpPlayerInfo([...players]);
-    }
+      const initialBackup = [...gameContext.players];
 
-    if (handInfo && smallBlind && bigBlind) {
-      console.log('HAND PLAYERS:', handInfo.players);
       const playerWithButton = handInfo.players[handInfo.dealerPosition];
-
       const preFlopOrder = getPreFlopPlayerOrder(
         playerWithButton,
         handInfo.players,
@@ -513,199 +547,219 @@ export const HandProgress: FC<HandProgressProps> = ({
       // ========= Adjust Players Stack for Blinds ========== //
       const bigBlindPlayer = preFlopOrder[preFlopOrder.length - 1];
       const smallBlindPlayer = preFlopOrder[preFlopOrder.length - 2];
+      const initialPot = String(
+        (Number(bigBlind) + Number(smallBlind)).toFixed(2),
+      );
 
-      const newBBPlayer = getStackChange(bigBlindPlayer, bigBlind);
-      const newSBPlayer = getStackChange(smallBlindPlayer, smallBlind);
+      const bbPlayer = getStackChange(bigBlindPlayer, bigBlind);
+      const sbPlayer = getStackChange(smallBlindPlayer, smallBlind);
 
-      preFlopOrder[preFlopOrder.length - 1] = newBBPlayer;
-      preFlopOrder[preFlopOrder.length - 2] = newSBPlayer;
+      preFlopOrder[preFlopOrder.length - 1] = bbPlayer;
+      preFlopOrder[preFlopOrder.length - 2] = sbPlayer;
 
-      const defaultAction: PlayerAction = {
-        player: preFlopOrder[preFlopOrder.length - 1],
-        action: HandActionEnum.NON,
+      const defaultAction: ActionType = {
+        seat: preFlopOrder[preFlopOrder.length - 1].seat,
+        type: HandActionEnum.NON,
         bet: bigBlind || '',
       };
-      // ========= END ========== //
 
-      const blinds = [newBBPlayer, newSBPlayer];
+      const initialHandData: IHandData = {
+        activeOrder: preFlopOrder,
+        allInPlayerCount: 0,
+        backUpPlayerInfo: initialBackup,
+        currentStreet: HandStreetEnum.PREFLOP,
+        effectiveAction: defaultAction,
+        pot: initialPot,
+        playerToAct: preFlopOrder[0],
+      };
 
-      const playersAdjustedWithBlinds = handInfo?.players.map(
-        player => blinds.find(ply => ply.seat === player.seat) || player,
-      );
-
-      const playersAdjustedAllPlayersWithBlinds = gameContext.players.map(
-        player => blinds.find(ply => ply.seat === player.seat) || player,
-      );
-
-      const setHandInfo = gameContext.setHandInfo;
-
-      setHandInfo({ ...handInfo, players: playersAdjustedWithBlinds });
-      setPlayersInHand(playersAdjustedAllPlayersWithBlinds);
-
-      console.log('Initial Pre Flop Order', preFlopOrder);
-      setMainAction(defaultAction);
-      setCurrentOrder(preFlopOrder);
-      setPlayerToAct(preFlopOrder[0]);
+      console.log('[HAND SETUP] Initial Hand Data:', initialHandData);
+      setHandData(initialHandData);
     }
   }, []);
 
   // Use Effect listing to mainAction change to understand options available for active player.
   useEffect(() => {
-    if (
-      mainAction?.player === playerToAct &&
-      currentStreet === HandStreetEnum.PREFLOP
-    ) {
-      setShowCheckButton(true);
-      setShowCallButton(false);
-      setShowBetButton(true);
-    } else if (
-      mainAction?.action === HandActionEnum.NON &&
-      currentStreet === HandStreetEnum.PREFLOP
-    ) {
-      setShowCheckButton(false);
-      setShowCallButton(true);
-      setShowBetButton(true);
-    } else if (mainAction?.action === HandActionEnum.NON) {
-      setShowCheckButton(true);
-      setShowCallButton(false);
-      setShowBetButton(true);
-    } else if (mainAction?.action === HandActionEnum.BET) {
-      setShowCheckButton(false);
-      setShowCallButton(true);
-      setShowBetButton(true);
-    } else if (mainAction?.action === HandActionEnum.CHECK) {
-      setShowCheckButton(true);
-      setShowCallButton(false);
-      setShowBetButton(true);
-    } else {
-      console.log('EXCEPTION ON HAND BUTTONS');
-      setShowCheckButton(true);
-      setShowCallButton(true);
-      setShowBetButton(true);
-    }
-  }, [playerToAct, currentStreet]);
-
-  const handleCommunityCardStore = useCallback(
-    (uid: string, socketRef: string) => {
-      const getLimit = () => {
-        switch (currentStreet) {
-          case HandStreetEnum.PREFLOP:
-            return 0;
-          case HandStreetEnum.FLOP:
-            return 3;
-          case HandStreetEnum.TURN:
-            return 4;
-          case HandStreetEnum.RIVER:
-            return 5;
-          default:
-            return 0;
-        }
-      };
-
-      const limit = getLimit();
-
-      const selectedCard = getCardFromUID(uid);
-
-      const communityStore = [...communityCardStore];
-      const doesCardExist = communityStore.find(card => card === selectedCard);
-
-      if (communityCardStore.length !== limit) {
-        if (!!doesCardExist) {
-          console.log(
-            '[CARD STORE] Community Card Already Exists:',
-            selectedCard,
-          );
-
-          return;
-        }
-        const card = getCardFromUID(uid);
-
-        setCommunityCardStore(currentCommunityCardStore => [
-          ...currentCommunityCardStore,
-          card,
-        ]);
-
-        console.log('[CARD STORE] Adding Community Card:', card);
+    if (handData) {
+      const { effectiveAction, playerToAct, currentStreet } = handData;
+      if (
+        effectiveAction.seat === playerToAct.seat &&
+        currentStreet === HandStreetEnum.PREFLOP
+      ) {
+        setShowCheckButton(true);
+        setShowCallButton(false);
+        setShowBetButton(true);
+      } else if (
+        effectiveAction.type === HandActionEnum.NON &&
+        currentStreet === HandStreetEnum.PREFLOP
+      ) {
+        setShowCheckButton(false);
+        setShowCallButton(true);
+        setShowBetButton(true);
+      } else if (effectiveAction.type === HandActionEnum.NON) {
+        setShowCheckButton(true);
+        setShowCallButton(false);
+        setShowBetButton(true);
+      } else if (
+        effectiveAction.type === HandActionEnum.BET ||
+        HandActionEnum.ALLIN
+      ) {
+        setShowCheckButton(false);
+        setShowCallButton(true);
+        setShowBetButton(true);
+      } else if (effectiveAction.type === HandActionEnum.CHECK) {
+        setShowCheckButton(true);
+        setShowCallButton(false);
+        setShowBetButton(true);
       } else {
-        console.log('[CARD STORE] Community Card Limit Reached');
-        socket?.off(socketRef);
-        if (limit !== 0) {
-          console.log('COMMUNITY CARD DISABLE');
-          handleDisableRFID();
-        }
+        console.log('[ERROR]: Invalid Street, showing all buttons');
+        setShowCheckButton(true);
+        setShowCallButton(true);
+        setShowBetButton(true);
       }
-    },
-    [communityCardStore, currentStreet],
-  );
+    }
+  }, [handData?.currentStreet, handData?.playerToAct]);
 
   useEffect(() => {
-    handleEnableRFID();
-  }, [currentStreet]);
+    console.log(
+      '[INFO] Change in effective action:',
+      handData?.effectiveAction,
+    );
+  }, [handData?.effectiveAction]);
 
   const handlePlayerHandStore = useCallback(
     (uid: string, seat: number, socketRef: string) => {
-      const handStore = [...playerHandStore];
-      const player = handStore.find(player => player.seat === seat);
-      const card = getCardFromUID(uid);
-      let playerHand: IPlayerHand;
+      if (handData) {
+        const { activeOrder, currentStreet } = handData;
+        const handStore = [...playerHandStore];
+        const player = handStore.find(player => player.seat === seat);
+        const card = getCardFromUID(uid);
+        let playerHand: IPlayerHand;
 
-      if (player) {
-        const playerHandIndex = handStore.findIndex(
-          player => player.seat === seat,
-        );
-        if (player.hand.length === 2) {
-          socket?.off(socketRef);
-
-          const playersActiveInHand = currentOrder?.length;
-
-          const allHandsWithTwoCards = handStore.filter(
-            player => player.hand.length === 2,
+        if (player) {
+          const playerHandIndex = handStore.findIndex(
+            player => player.seat === seat,
           );
+          if (player.hand.length === 2) {
+            socket?.off(socketRef);
 
-          if (
-            allHandsWithTwoCards?.length === playersActiveInHand &&
-            currentStreet === HandStreetEnum.PREFLOP
-          ) {
-            console.log('HAND STORE CARD DISABLE');
-            handleDisableRFID();
+            const playersActiveInHand = activeOrder.length;
+
+            const allHandsWithTwoCards = handStore.filter(
+              player => player.hand.length === 2,
+            );
+
+            if (
+              allHandsWithTwoCards?.length === playersActiveInHand &&
+              currentStreet === HandStreetEnum.PREFLOP
+            ) {
+              console.log('HAND STORE CARD DISABLE');
+              handleDisableRFID();
+            }
+
+            return;
+          } else {
+            if (player?.hand.includes(card)) {
+              console.log('[CARD STORE] Card Already Registered');
+              return;
+            }
+
+            const newPlayerHand = [...player.hand, card];
+
+            playerHand = {
+              hand: newPlayerHand,
+              seat: player.seat,
+              hasCards: player.hasCards,
+            };
           }
+
+          const newPlayerHandStore = [...handStore];
+          newPlayerHandStore[playerHandIndex] = playerHand;
+
+          setPlayerHandStore(newPlayerHandStore);
 
           return;
         } else {
-          if (player?.hand.includes(card)) {
-            console.log('[CARD STORE] Card Already Registered');
-            return;
-          }
-
-          const newPlayerHand = [...player.hand, card];
-
-          playerHand = {
-            hand: newPlayerHand,
-            seat: player.seat,
-            hasCards: player.hasCards,
+          const playerHand = {
+            hand: [card],
+            seat: seat,
+            hasCards: false,
           };
+
+          setPlayerHandStore(currentPlayerHandStore => [
+            ...currentPlayerHandStore,
+            playerHand,
+          ]);
         }
-
-        const newPlayerHandStore = [...handStore];
-        newPlayerHandStore[playerHandIndex] = playerHand;
-
-        setPlayerHandStore(newPlayerHandStore);
-
-        return;
-      } else {
-        const playerHand = {
-          hand: [card],
-          seat: seat,
-          hasCards: false,
-        };
-
-        setPlayerHandStore(currentPlayerHandStore => [
-          ...currentPlayerHandStore,
-          playerHand,
-        ]);
       }
     },
-    [playerHandStore, currentOrder, currentStreet, handleDisableRFID],
+    [
+      playerHandStore,
+      handData?.activeOrder,
+      handData?.currentStreet,
+      handleDisableRFID,
+    ],
+  );
+
+  const handleCommunityCardStore = useCallback(
+    (uid: string, socketRef: string) => {
+      if (handData) {
+        const { currentStreet } = handData;
+
+        const getLimit = () => {
+          switch (currentStreet) {
+            case HandStreetEnum.PREFLOP:
+              return 0;
+            case HandStreetEnum.FLOP:
+              return 3;
+            case HandStreetEnum.TURN:
+              return 4;
+            case HandStreetEnum.RIVER:
+              return 5;
+            case HandStreetEnum.ALLIN:
+              return 5;
+            default:
+              return 0;
+          }
+        };
+
+        const limit = getLimit();
+
+        const selectedCard = getCardFromUID(uid);
+
+        const communityStore = [...communityCardStore];
+        const doesCardExist = communityStore.find(
+          card => card === selectedCard,
+        );
+
+        if (communityCardStore.length !== limit) {
+          if (!!doesCardExist) {
+            console.log(
+              '[CARD STORE] Community Card Already Exists:',
+              selectedCard,
+            );
+
+            return;
+          }
+          const card = getCardFromUID(uid);
+
+          setCommunityCardStore(currentCommunityCardStore => [
+            ...currentCommunityCardStore,
+            card,
+          ]);
+
+          console.log('[CARD STORE] Adding Community Card:', card);
+        } else {
+          console.log('[CARD STORE] Community Card Limit Reached');
+          socket?.off(socketRef);
+          if (limit !== 0) {
+            console.log('[CARD STORE] COMMUNITY CARD DISABLE');
+            handleDisableRFID();
+          }
+        }
+      }
+    },
+    [communityCardStore, handData?.currentStreet],
   );
 
   useEffect(() => {
@@ -728,7 +782,7 @@ export const HandProgress: FC<HandProgressProps> = ({
       socket?.off('seatThree');
       socket?.off('seatFour');
     };
-  }, [socket, playerHandStore, currentStreet]);
+  }, [socket, playerHandStore, handData?.currentStreet]);
 
   useEffect(() => {
     socket?.on('communityCards', rfid =>
@@ -738,7 +792,11 @@ export const HandProgress: FC<HandProgressProps> = ({
     return () => {
       socket?.off('communityCards');
     };
-  }, [currentStreet, communityCardStore]);
+  }, [handData?.currentStreet, communityCardStore]);
+
+  useEffect(() => {
+    handleEnableRFID();
+  }, [handData?.currentStreet]);
 
   useEffect(() => {
     console.log('[PLAYER HAND STORE]: STORE -', playerHandStore);
@@ -746,6 +804,12 @@ export const HandProgress: FC<HandProgressProps> = ({
 
   useEffect(() => {
     console.log(communityCardStore);
+
+    if (handData?.currentStreet === HandStreetEnum.ALLIN) {
+      if (communityCardStore.length === 5) {
+        handleFindWinner();
+      }
+    }
   }, [communityCardStore]);
 
   return (
@@ -754,7 +818,10 @@ export const HandProgress: FC<HandProgressProps> = ({
         <View style={styles.potIndicator}>
           <Text style={styles.actionIndicatorText}>
             Pot: {gameContext?.gameSettings.currency}
-            {gameContext?.handInfo.pot}
+            {handData?.pot}
+          </Text>
+          <Text style={styles.actionIndicatorText}>
+            Street: {handData?.currentStreet}
           </Text>
         </View>
         <View style={styles.communityCardsWrapper}>
@@ -764,8 +831,8 @@ export const HandProgress: FC<HandProgressProps> = ({
         </View>
         <View style={styles.actionIndicatorWrapper}>
           <Text style={styles.actionIndicatorText}>
-            {playerToAct?.name
-              ? `${playerToAct.name} - ${gameContext?.gameSettings.currency}${playerToAct.stack}`
+            {handData?.playerToAct.name
+              ? `${handData?.playerToAct.name} - ${gameContext?.gameSettings.currency}${handData?.playerToAct.stack}`
               : 'Loading'}
           </Text>
         </View>
@@ -774,35 +841,51 @@ export const HandProgress: FC<HandProgressProps> = ({
             color={ButtonColorEnum.WHITE}
             width={150}
             text={'FOLD'}
-            onPress={() => handleAction(playerToAct, HandActionEnum.FOLD)}
+            onPress={() =>
+              handData
+                ? handleAction(handData.playerToAct, HandActionEnum.FOLD)
+                : null
+            }
           />
-          {showCheckButton && (
-            <AppButton
-              color={ButtonColorEnum.WHITE}
-              width={150}
-              text={'CHECK'}
-              onPress={() =>
-                handleAction(playerToAct, HandActionEnum.CHECK, mainAction?.bet)
-              }
-            />
-          )}
-          {showCallButton && (
-            <AppButton
-              color={ButtonColorEnum.WHITE}
-              width={150}
-              text={'CALL'}
-              onPress={() =>
-                handleAction(playerToAct, HandActionEnum.CALL, mainAction?.bet)
-              }
-            />
-          )}
-          {showBetButton && (
-            <AppButton
-              color={ButtonColorEnum.WHITE}
-              width={150}
-              text={'BET/RAISE'}
-              onPress={handleBetClick}
-            />
+          {handData?.currentStreet !== HandStreetEnum.ALLIN && (
+            <>
+              {showCheckButton && (
+                <AppButton
+                  color={ButtonColorEnum.WHITE}
+                  width={150}
+                  text={'CHECK'}
+                  onPress={() =>
+                    handData
+                      ? handleAction(handData.playerToAct, HandActionEnum.CHECK)
+                      : null
+                  }
+                />
+              )}
+              {showCallButton && (
+                <AppButton
+                  color={ButtonColorEnum.WHITE}
+                  width={150}
+                  text={'CALL'}
+                  onPress={() =>
+                    handData
+                      ? handleAction(
+                          handData.playerToAct,
+                          HandActionEnum.CALL,
+                          handData.effectiveAction.bet,
+                        )
+                      : null
+                  }
+                />
+              )}
+              {showBetButton && (
+                <AppButton
+                  color={ButtonColorEnum.WHITE}
+                  width={150}
+                  text={'BET/RAISE'}
+                  onPress={handleBetClick}
+                />
+              )}
+            </>
           )}
         </View>
         <View style={styles.undoButtonWrapper}>
