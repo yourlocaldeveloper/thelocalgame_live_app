@@ -26,6 +26,10 @@ export interface IPlayerHand {
   hasCards: boolean;
 }
 
+const socket = io('http://10.0.2.2:3000', {
+  autoConnect: false,
+});
+
 export const Main: FC = () => {
   const styles = StyleSheet.create({
     main: {
@@ -34,8 +38,6 @@ export const Main: FC = () => {
       width: '100%',
     },
   });
-
-  const socket = io('http://10.0.2.2:3000');
 
   const [players, setPlayers] = useState<PlayerType[]>(testPlayers);
   const [gameState, setGameState] = useState<GameStateEnum>(GameStateEnum.OFF);

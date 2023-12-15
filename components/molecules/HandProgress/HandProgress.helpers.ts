@@ -18,6 +18,12 @@ export type HandPlayerType = {
   stack: string;
   seat: number;
   action: ActionType;
+  committed: string;
+};
+
+export type SidePotType = {
+  pot: string;
+  players: HandPlayerType[];
 };
 
 export interface IHandData {
@@ -143,6 +149,7 @@ const getOrderedPlayerList = (players: PlayerType[], index: number) => {
       stack: player.stack || '',
       seat: player.seat,
       action: { seat: player.seat, type: HandActionEnum.NON },
+      committed: '0.00',
     };
   });
 
