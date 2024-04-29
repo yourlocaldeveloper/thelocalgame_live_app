@@ -84,6 +84,20 @@ export const HandProgress: FC<HandProgressProps> = ({
     setShowBetModal(true);
   };
 
+  const submitAction = (player: HandPlayerType, action: HandActionEnum) => {
+    socket?.emit(
+      'submitAction',
+      JSON.stringify({ player: player, action: action }),
+    );
+  };
+
+  const displayPlayerToStream = (player: HandPlayerType) => {
+    socket?.emit(
+      'displayPlayer',
+      JSON.stringify({ ...player, isOriginallyActive: true }),
+    );
+  };
+
   const handleHandWon = (winningPlayer: HandPlayerType) => {
     console.log('[INFO] Player Won:', winningPlayer.name);
     if (handData) {
@@ -305,6 +319,7 @@ export const HandProgress: FC<HandProgressProps> = ({
       gameContext?.setPlayers(backUpPlayerInfo);
     }
 
+    socket?.emit('resetLivestream', JSON.stringify('stop'));
     handleEndHand();
   };
 
@@ -510,20 +525,30 @@ export const HandProgress: FC<HandProgressProps> = ({
             type: HandActionEnum.NON,
           };
 
+      const newPlayerToAct = startingPlayer || orderWithActivePlayers[0];
+
+      socket?.emit(
+        String(newPlayerToAct.seat),
+        JSON.stringify({
+          stack: newPlayerToAct.stack,
+          isActive: true,
+        }),
+      );
+
       handDataOverwrite
         ? setHandData({
             ...handDataOverwrite,
             effectiveAction: newMainAction,
             activeOrder: orderWithActivePlayers,
             currentStreet: newStreet,
-            playerToAct: startingPlayer || orderWithActivePlayers[0],
+            playerToAct: newPlayerToAct,
           })
         : setHandData({
             ...handData,
             effectiveAction: newMainAction,
             activeOrder: orderWithActivePlayers,
             currentStreet: newStreet,
-            playerToAct: startingPlayer || orderWithActivePlayers[0],
+            playerToAct: newPlayerToAct,
           });
     }
   };
@@ -531,9 +556,8 @@ export const HandProgress: FC<HandProgressProps> = ({
   // FUNCTION: Handling assigning the next player //
   const handleAssignNextPlayer = (handDataOverride?: IHandData) => {
     if (handData) {
-      const { activeOrder, playerToAct, effectiveAction } = handDataOverride
-        ? handDataOverride
-        : handData;
+      const { activeOrder, playerToAct, effectiveAction, currentStreet } =
+        handDataOverride ? handDataOverride : handData;
 
       const targetedPlayer = activeOrder.find(
         player => player.seat === playerToAct.seat,
@@ -602,6 +626,11 @@ export const HandProgress: FC<HandProgressProps> = ({
         ? { ...handDataOverride, playerToAct: nextPlayer }
         : { ...handData, playerToAct: nextPlayer };
 
+      if (currentStreet === HandStreetEnum.PREFLOP) {
+        console.log('[STREAM]: Displaying User');
+        displayPlayerToStream(nextPlayer);
+      }
+
       if (
         nextPlayer.action.type === HandActionEnum.FOLD ||
         nextPlayer.action.type === HandActionEnum.ALLIN
@@ -654,6 +683,15 @@ export const HandProgress: FC<HandProgressProps> = ({
           currentStreet: nextStreet,
         });
       }
+
+      socket?.emit(
+        String(actionPlayer.seat),
+        JSON.stringify({
+          stack: actionPlayer.stack,
+          action: actionPlayer.action.type,
+          isActive: false,
+        }),
+      );
     } else {
       console.log('[ERROR]: Hand Data does not exist');
     }
@@ -725,6 +763,20 @@ export const HandProgress: FC<HandProgressProps> = ({
         const newPot = addChips(pot, adjustedPlayerBet);
 
         if (isClosingAction) {
+          if (isBet) {
+            socket?.emit('submitEffectiveAction', JSON.stringify(newAction));
+          }
+
+          socket?.emit(
+            String(newAction.seat),
+            JSON.stringify({
+              stack: playerAdjustedStack.stack,
+              action: playerAdjustedStack.action.type,
+              bet: playerAdjustedStack.action.bet,
+              isActivePlayer: false,
+            }),
+          );
+
           handleClosingAction({
             ...handData,
             activeOrder: newCurrentOrder,
@@ -732,6 +784,23 @@ export const HandProgress: FC<HandProgressProps> = ({
             effectiveAction: isBet ? newAction : handData.effectiveAction,
           });
         } else {
+          if (isBet) {
+            socket?.emit(
+              'submitEffectiveAction',
+              JSON.stringify(handData.effectiveAction),
+            );
+          }
+
+          socket?.emit(
+            String(newAction.seat),
+            JSON.stringify({
+              stack: playerAdjustedStack.stack,
+              action: playerAdjustedStack.action.type,
+              bet: playerAdjustedStack.action.bet,
+              isActivePlayer: false,
+            }),
+          );
+
           handleAssignNextPlayer({
             ...handData,
             activeOrder: newCurrentOrder,
@@ -852,6 +921,8 @@ export const HandProgress: FC<HandProgressProps> = ({
       };
 
       console.log('[HAND SETUP] Initial Hand Data:', initialHandData);
+      socket?.emit('initialPlayerData', JSON.stringify(initialBackup));
+      displayPlayerToStream(preFlopOrder[0]);
       setHandData(initialHandData);
     }
   }, []);
@@ -1073,6 +1144,22 @@ export const HandProgress: FC<HandProgressProps> = ({
   }, [handData?.currentStreet, communityCardStore]);
 
   useEffect(() => {
+    if (handData?.currentStreet !== HandStreetEnum.PREFLOP) {
+      handData?.activeOrder.forEach((player, index) => {
+        const dataToEmit = {
+          stack: player.stack,
+          isActive: false,
+        };
+
+        socket?.emit(String(player.seat), JSON.stringify(dataToEmit));
+      });
+    }
+
+    socket?.emit(
+      String(handData?.playerToAct.seat),
+      JSON.stringify({ stack: handData?.playerToAct.stack, isActive: true }),
+    );
+
     handleEnableRFID();
   }, [handData?.currentStreet]);
 
