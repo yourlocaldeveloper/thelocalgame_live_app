@@ -21,7 +21,6 @@ import { IPlayerHand } from '@components/Main';
 
 import { NumberPad } from '../NumberPad';
 import {
-  styles,
   getPreFlopPlayerOrder,
   getPostFlopPlayerOrder,
   getNextToAct,
@@ -33,11 +32,15 @@ import {
   getWinnerOfHand,
   handleDisableRFID,
   handleEnableRFID,
-  IHandData,
+} from './HandProgress.helpers';
+import {
   ActionType,
   HandPlayerType,
   SidePotType,
-} from './HandProgress.helpers';
+  IHandData,
+} from './HandProgress.types';
+
+import { styles } from './HandProgress.styles';
 
 type HandProgressProps = {
   playerHandStore: IPlayerHand[];
