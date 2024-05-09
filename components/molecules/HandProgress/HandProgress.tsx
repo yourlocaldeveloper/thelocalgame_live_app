@@ -436,7 +436,6 @@ export const HandProgress: FC<HandProgressProps> = ({
 
       if (currentStreet === HandStreetEnum.RIVER) {
         // Check if reached river, then award winning player pot
-        // TO:DO add proper hand won logic. Placeholder is to just give last player pot
 
         handlePotAllocation();
         return;
@@ -673,6 +672,15 @@ export const HandProgress: FC<HandProgressProps> = ({
         return;
       }
 
+      socket?.emit(
+        String(actionPlayer.seat),
+        JSON.stringify({
+          stack: actionPlayer.stack,
+          action: actionPlayer.action.type,
+          isActive: false,
+        }),
+      );
+
       if (!isClosingAction) {
         handleAssignNextPlayer({ ...handData, activeOrder: newActiveOrder });
       } else {
@@ -683,15 +691,6 @@ export const HandProgress: FC<HandProgressProps> = ({
           currentStreet: nextStreet,
         });
       }
-
-      socket?.emit(
-        String(actionPlayer.seat),
-        JSON.stringify({
-          stack: actionPlayer.stack,
-          action: actionPlayer.action.type,
-          isActive: false,
-        }),
-      );
     } else {
       console.log('[ERROR]: Hand Data does not exist');
     }
