@@ -82,7 +82,7 @@ export interface IHandInfo {
   postFlopOrder?: PlayerType[];
 }
 
-type GameContextType = {
+export type GameContextType = {
   players: PlayerType[];
   setPlayers: Dispatch<SetStateAction<PlayerType[]>>;
   gameState: GameStateEnum;

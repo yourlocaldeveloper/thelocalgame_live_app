@@ -4,7 +4,10 @@ import {
   PlayerType,
   HandStreetEnum,
   HandActionEnum,
+  GameContextType,
 } from '@components/GameContext';
+
+import { ActionType, IHandData } from './HandProgress.types';
 
 import { uidToCardValue } from '@utils/CardValues';
 
@@ -139,6 +142,55 @@ export const getWinnerOfHand = (players: string[][], board: string[]) => {
   const winner = Result.getWinner();
 
   return Result;
+};
+
+export const getHandSetup = (gameContext: GameContextType) => {
+  const handInfo = gameContext.handInfo;
+  const bigBlind = gameContext.gameSettings.bigBlind;
+  const smallBlind = gameContext.gameSettings.smallBlind;
+
+  const initialBackup = [...gameContext.players];
+
+  const playerWithButton = handInfo.players[handInfo.dealerPosition];
+  const preFlopOrder = getPreFlopPlayerOrder(
+    playerWithButton,
+    handInfo.players,
+  );
+
+  // ========= Adjust Players Stack for Blinds ========== //
+  const bigBlindPlayer = preFlopOrder[preFlopOrder.length - 1];
+  const smallBlindPlayer = preFlopOrder[preFlopOrder.length - 2];
+  const initialPot = String((Number(bigBlind) + Number(smallBlind)).toFixed(2));
+
+  const bbPlayer = getStackChange(bigBlindPlayer, bigBlind);
+  const sbPlayer = getStackChange(smallBlindPlayer, smallBlind);
+
+  bbPlayer.action.bet = bigBlind;
+  sbPlayer.action.bet = smallBlind;
+
+  bbPlayer.committed = bigBlind;
+  sbPlayer.committed = smallBlind;
+
+  preFlopOrder[preFlopOrder.length - 1] = bbPlayer;
+  preFlopOrder[preFlopOrder.length - 2] = sbPlayer;
+
+  const defaultAction: ActionType = {
+    seat: preFlopOrder[preFlopOrder.length - 1].seat,
+    type: HandActionEnum.NON,
+    bet: bigBlind || '',
+  };
+
+  const initialHandData: IHandData = {
+    activeOrder: preFlopOrder,
+    allInPlayerCount: 0,
+    backUpPlayerInfo: initialBackup,
+    currentStreet: HandStreetEnum.PREFLOP,
+    effectiveAction: defaultAction,
+    pot: initialPot,
+    playerToAct: preFlopOrder[0],
+  };
+
+  return { preFlopOrder, initialBackup, initialHandData };
 };
 
 export const handleEnableRFID = async () => {

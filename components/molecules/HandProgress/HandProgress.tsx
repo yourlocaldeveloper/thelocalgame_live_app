@@ -32,6 +32,7 @@ import {
   getWinnerOfHand,
   handleDisableRFID,
   handleEnableRFID,
+  getHandSetup,
 } from './HandProgress.helpers';
 import {
   ActionType,
@@ -875,52 +876,8 @@ export const HandProgress: FC<HandProgressProps> = ({
   // Initial hand set up.
   useEffect(() => {
     if (gameContext) {
-      const handInfo = gameContext.handInfo;
-      const bigBlind = gameContext.gameSettings.bigBlind;
-      const smallBlind = gameContext.gameSettings.smallBlind;
-
-      const initialBackup = [...gameContext.players];
-
-      const playerWithButton = handInfo.players[handInfo.dealerPosition];
-      const preFlopOrder = getPreFlopPlayerOrder(
-        playerWithButton,
-        handInfo.players,
-      );
-
-      // ========= Adjust Players Stack for Blinds ========== //
-      const bigBlindPlayer = preFlopOrder[preFlopOrder.length - 1];
-      const smallBlindPlayer = preFlopOrder[preFlopOrder.length - 2];
-      const initialPot = String(
-        (Number(bigBlind) + Number(smallBlind)).toFixed(2),
-      );
-
-      const bbPlayer = getStackChange(bigBlindPlayer, bigBlind);
-      const sbPlayer = getStackChange(smallBlindPlayer, smallBlind);
-
-      bbPlayer.action.bet = bigBlind;
-      sbPlayer.action.bet = smallBlind;
-
-      bbPlayer.committed = bigBlind;
-      sbPlayer.committed = smallBlind;
-
-      preFlopOrder[preFlopOrder.length - 1] = bbPlayer;
-      preFlopOrder[preFlopOrder.length - 2] = sbPlayer;
-
-      const defaultAction: ActionType = {
-        seat: preFlopOrder[preFlopOrder.length - 1].seat,
-        type: HandActionEnum.NON,
-        bet: bigBlind || '',
-      };
-
-      const initialHandData: IHandData = {
-        activeOrder: preFlopOrder,
-        allInPlayerCount: 0,
-        backUpPlayerInfo: initialBackup,
-        currentStreet: HandStreetEnum.PREFLOP,
-        effectiveAction: defaultAction,
-        pot: initialPot,
-        playerToAct: preFlopOrder[0],
-      };
+      const { preFlopOrder, initialBackup, initialHandData } =
+        getHandSetup(gameContext);
 
       console.log('[HAND SETUP] Initial Hand Data:', initialHandData);
       socket?.emit('initialPlayerData', JSON.stringify(initialBackup));
