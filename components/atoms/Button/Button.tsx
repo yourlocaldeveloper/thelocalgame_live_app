@@ -28,8 +28,8 @@ export const AppButton: FC<ButtonProps> = ({
 }) => {
   const styles = StyleSheet.create({
     button: {
-      width: width || 75,
-      height: height || 75,
+      width: width || 100,
+      height: height || 100,
     },
     text: {
       textShadowOffset: {

@@ -640,6 +640,13 @@ export const HandProgress: FC<HandProgressProps> = ({
       ) {
         handleAssignNextPlayer(updatedHandData);
       } else {
+        socket?.emit(
+          String(nextPlayer.seat),
+          JSON.stringify({
+            stack: nextPlayer.stack,
+            isActive: true,
+          }),
+        );
         setHandData(updatedHandData);
       }
     } else {
@@ -845,6 +852,15 @@ export const HandProgress: FC<HandProgressProps> = ({
       }
 
       if (action === HandActionEnum.CHECK) {
+        socket?.emit(
+          String(actionPlayer.seat),
+          JSON.stringify({
+            stack: actionPlayer.stack,
+            action: HandActionEnum.CHECK,
+            isActivePlayer: false,
+          }),
+        );
+
         handleAssignNextPlayer();
         return;
       }
@@ -1150,6 +1166,17 @@ export const HandProgress: FC<HandProgressProps> = ({
           </Text>
           <Text style={styles.actionIndicatorText}>
             Street: {handData?.currentStreet}
+          </Text>
+        </View>
+        <View style={styles.effectiveActionIndiciator}>
+          <Text style={styles.actionIndicatorText}>
+            Efc Action: {handData?.effectiveAction.type}
+          </Text>
+          <Text style={styles.actionIndicatorText}>
+            Amount: {handData?.effectiveAction.bet}
+          </Text>
+          <Text style={styles.actionIndicatorText}>
+            Player: {handData?.effectiveAction.seat}
           </Text>
         </View>
         <View style={styles.communityCardsWrapper}>

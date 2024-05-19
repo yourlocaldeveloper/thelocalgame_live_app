@@ -55,6 +55,12 @@ export const styles = StyleSheet.create({
     top: 0,
     paddingLeft: 10,
   },
+  effectiveActionIndiciator: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    paddingLeft: 10,
+  },
   contentWrapper: {
     display: 'flex',
     flexDirection: 'row',

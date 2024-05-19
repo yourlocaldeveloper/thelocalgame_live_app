@@ -15,7 +15,7 @@ export const StackIndicators: FC = () => {
       display: 'flex',
       textAlignVertical: 'center',
       color: 'white',
-      width: 75,
+      width: 100,
       height: 30,
       textAlign: 'center',
     },

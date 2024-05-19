@@ -194,7 +194,7 @@ export const getHandSetup = (gameContext: GameContextType) => {
 };
 
 export const handleEnableRFID = async () => {
-  const disableRFID = await fetch('http://10.0.2.2:8080/rfid/continue', {
+  const disableRFID = await fetch('http://192.168.0.11:8080/rfid/continue', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -214,7 +214,7 @@ export const handleEnableRFID = async () => {
 };
 
 export const handleDisableRFID = async () => {
-  const disableRFID = await fetch('http://10.0.2.2:8080/rfid/stop', {
+  const disableRFID = await fetch('http://192.168.0.11:8080/rfid/stop', {
     method: 'POST',
     headers: {
       Accept: 'application/json',

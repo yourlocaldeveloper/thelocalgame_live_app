@@ -31,7 +31,7 @@ export const HandSetup: FC = () => {
       position: 'absolute',
       right: 0,
       bottom: 0,
-      width: 75,
+      width: 100,
     },
     error: {
       textAlign: 'center',

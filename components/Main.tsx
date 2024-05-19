@@ -26,7 +26,7 @@ export interface IPlayerHand {
   hasCards: boolean;
 }
 
-const socket = io('http://10.0.2.2:3001', {
+const socket = io('http://192.168.0.11:3001', {
   autoConnect: false,
 });
 
