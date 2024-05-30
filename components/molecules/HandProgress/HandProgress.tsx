@@ -33,6 +33,7 @@ import {
   handleDisableRFID,
   handleEnableRFID,
   getHandSetup,
+  getChopPotAmount,
 } from './HandProgress.helpers';
 import {
   ActionType,
@@ -146,69 +147,122 @@ export const HandProgress: FC<HandProgressProps> = ({
     handleEndHand();
   };
 
+  const handleChopPot = (winningPlayers: HandPlayerType[]) => {
+    if (handData && gameContext) {
+      const { activeOrder, pot } = handData;
+      const setPlayers = gameContext.setPlayers;
+      const corePlayers = gameContext.players;
+
+      let newAllPlayers = corePlayers;
+
+      const { chopAmount, remainderChips } = getChopPotAmount(
+        winningPlayers.length,
+        pot,
+        gameContext.gameSettings.smallBlind,
+      );
+
+      winningPlayers.forEach((winningPlayer, index) => {
+        const playerInCurrentOrder = activeOrder.find(
+          player => player.seat === winningPlayer.seat,
+        );
+
+        if (playerInCurrentOrder) {
+          const chopAwardAmount =
+            index === 0 && remainderChips
+              ? String((Number(chopAmount) + Number(remainderChips)).toFixed(2))
+              : chopAmount;
+
+          const playerAdjustedStack = getWinningPlayerStack(
+            playerInCurrentOrder,
+            chopAwardAmount,
+          );
+
+          const adjustedAllPlayers = activeOrder.map(
+            player =>
+              [playerAdjustedStack].find(ply => ply.seat === player.seat) ||
+              player,
+          );
+
+          // TO-DO RESOLVE ISSUE WHERE newAllPlayers is not sharing updated state on each forEach
+          newAllPlayers = newAllPlayers.map(corePlayer => {
+            const playerFound = adjustedAllPlayers.find(
+              player => player.seat === corePlayer.seat,
+            );
+
+            if (playerFound && winningPlayer.seat === corePlayer.seat) {
+              corePlayer.stack = playerFound.stack;
+            }
+
+            return corePlayer;
+          });
+        }
+      });
+
+      if (setPlayers && newAllPlayers) {
+        setPlayers(newAllPlayers);
+      }
+    }
+
+    handleEndHand();
+  };
+
   // Function: handleFindWinner
   const handleFindWinner = (allPots?: SidePotType[]) => {
+    // getting setPlayers function to set gameCOntext?
     const setPlayers = gameContext?.setPlayers;
+    // getting old player array for game context
     const corePlayers = gameContext?.players;
     if (handData && corePlayers && setPlayers) {
       const { activeOrder } = handData;
 
+      // all pots is if there is a scenario a player is all in and there is a side pot
       if (!allPots) {
+        // filters players who are left
         const playersLeft = playerHandStore.filter(player =>
           activeOrder.find(ply => ply.seat === player.seat),
         );
 
+        // maps the hands they have
         const hands = playersLeft.map(player => [
           player.hand[0],
           player.hand[1],
         ]);
 
-        const hand = getWinnerOfHand(hands, communityCardStore);
-        const winner = hand.getWinner();
-        const winningHand = winner.player.getHand();
+        // Calls on external function to get winner of hand.
+        const { winningPlayers, isChop } = getWinnerOfHand(
+          hands,
+          communityCardStore,
+          activeOrder,
+          playersLeft,
+        );
 
-        if (winningHand) {
-          console.log('[INFO] Winning Hand:', winningHand);
-          console.log('[INFO] playersLeft:', playersLeft);
-
-          const winningPlayer = playersLeft.find(player => {
-            const playerHand = player.hand.join('');
-            console.log(`[INFO] Players Winning Hand: ${playerHand}`);
-            return playerHand === winningHand;
-          });
-
-          const winningPlayerData = activeOrder.find(
-            player => player.seat === winningPlayer?.seat,
-          );
-
-          console.log(
-            '[INFO] Winning Player in Current Order:',
-            winningPlayerData,
-          );
-
-          if (winningPlayerData) {
+        if (winningPlayers) {
+          if (!isChop) {
             console.log('[HAND WON]: Winner Identified');
-            handleHandWon(winningPlayerData);
+            handleHandWon(winningPlayers[0]);
+
+            return;
           } else {
-            console.log(
-              '[ERROR]: Could not figure winningPlayerInfo. Missdeal.',
-            );
-            handleMissdeal();
+            handleChopPot(winningPlayers);
+
+            return;
           }
         } else {
           console.log('[ERROR]: Could not figure out winner. Missdeal.');
           handleMissdeal();
+
+          return;
         }
       } else {
-        const setPlayers = gameContext?.setPlayers;
-        const corePlayers = gameContext?.players;
         let currentActiveOrder = handData.activeOrder;
 
         allPots.forEach(pot => {
+          // Runs the logic from above for each pot. This is to ensure side pots are only awarded to players who qualify for that pot
           const players = pot.players;
           const potValue = pot.pot;
 
           if (players.length === 1) {
+            // Return money to pot if player is only one able to win it
             const lonePlayer = players[0];
 
             const winningPlayer = currentActiveOrder.find(
@@ -229,6 +283,7 @@ export const HandProgress: FC<HandProgressProps> = ({
               );
             }
           } else {
+            // Runs similar logic as above
             const playersLeft = playerHandStore.filter(player =>
               players.find(ply => ply.seat === player.seat),
             );
@@ -238,71 +293,32 @@ export const HandProgress: FC<HandProgressProps> = ({
               player.hand[1],
             ]);
 
-            const hand = getWinnerOfHand(hands, communityCardStore);
-            const winner = hand.getWinner();
-            const winningHand = winner.player.getHand();
+            const { winningPlayers, isChop } = getWinnerOfHand(
+              hands,
+              communityCardStore,
+              currentActiveOrder,
+              playersLeft,
+            );
 
-            if (winningHand) {
-              console.log('[INFO] Winning Hand:', winningHand);
-              console.log('[INFO] playersLeft:', playersLeft);
-
-              const winningPlayer = playersLeft.find(player => {
-                const playerHand = player.hand.join('');
-                console.log(`[INFO] Players Winning Hand: ${playerHand}`);
-                return playerHand === winningHand;
-              });
-
-              const winningPlayerData = currentActiveOrder.find(
-                player => player.seat === winningPlayer?.seat,
-              );
-
-              console.log(
-                '[INFO] Winning Player in Current Order:',
-                winningPlayerData,
-              );
-
-              if (winningPlayerData) {
+            if (winningPlayers) {
+              if (!isChop) {
                 console.log('[HAND WON]: Winner Identified');
+                handleHandWon(winningPlayers[0]);
 
-                const winningPlayerUpdatedStack = getWinningPlayerStack(
-                  winningPlayerData,
-                  potValue,
-                );
-
-                currentActiveOrder = currentActiveOrder.map(
-                  player =>
-                    [winningPlayerUpdatedStack].find(
-                      ply => ply.seat === player.seat,
-                    ) || player,
-                );
+                return;
               } else {
-                console.log(
-                  '[ERROR]: Could not figure winningPlayerInfo. Missdeal.',
-                );
-                handleMissdeal();
+                handleChopPot(winningPlayers);
+
+                return;
               }
             } else {
               console.log('[ERROR]: Could not figure out winner. Missdeal.');
               handleMissdeal();
+
+              return;
             }
           }
         });
-
-        const newAllPlayers = corePlayers.map(corePlayer => {
-          const playerFound = currentActiveOrder.find(
-            player => player.seat === corePlayer.seat,
-          );
-
-          if (playerFound) {
-            corePlayer.stack = playerFound.stack;
-          }
-
-          return corePlayer;
-        });
-
-        if (setPlayers) {
-          setPlayers(newAllPlayers);
-        }
       }
     }
   };
@@ -337,6 +353,8 @@ export const HandProgress: FC<HandProgressProps> = ({
 
       if (allInPlayers.length === 0) {
         handleFindWinner();
+
+        return;
       } else {
         let sidePots: {
           committed: string;

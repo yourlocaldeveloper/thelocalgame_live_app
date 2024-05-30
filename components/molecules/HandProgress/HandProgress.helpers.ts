@@ -12,6 +12,7 @@ import { ActionType, IHandData } from './HandProgress.types';
 import { uidToCardValue } from '@utils/CardValues';
 
 import { HandPlayerType } from './HandProgress.types';
+import { IPlayerHand } from '@components/Main';
 
 // Helper function to getPreFlopPlayerOrder, getPostFlopPlayerOrder
 const getOrderedPlayerList = (players: PlayerType[], index: number) => {
@@ -87,6 +88,8 @@ export const getWinningPlayerStack = (
 ): HandPlayerType => {
   const newStack = player.stack ? addChips(player.stack, pot) : 'error';
 
+  console.log('[[[DEBUG]]] newStack:', newStack);
+
   const newPlayerInfo: HandPlayerType = { ...player, stack: newStack };
 
   return newPlayerInfo;
@@ -100,6 +103,9 @@ export const removeChips = (
 };
 
 export const addChips = (firstValue: string, secondValue: string): string => {
+  console.log('[[[DEBUG]]] firstValue:', Number(firstValue));
+  console.log('[[[DEBUG]]] secondValue:', Number(secondValue));
+  console.log('[[[DEBUG]]] Result:', Number(firstValue) - Number(secondValue));
   return String((Number(firstValue) + Number(secondValue)).toFixed(2));
 };
 
@@ -128,7 +134,43 @@ export const getCardFromUID = (uid: string): string => {
   }
 };
 
-export const getWinnerOfHand = (players: string[][], board: string[]) => {
+// Get Chop Pot Amount
+export const getChopPotAmount = (
+  playerAmount: number,
+  pot: string,
+  smallBlind: string,
+): { chopAmount: string; remainderChips?: string } => {
+  const potInSmallBlindUnits = Math.round(Number(pot) / Number(smallBlind));
+
+  const isEvenChop = potInSmallBlindUnits % playerAmount ? false : true;
+
+  if (isEvenChop) {
+    return { chopAmount: String((Number(pot) / playerAmount).toFixed(2)) };
+  }
+
+  const pureChopAmountInSmallBlinds = Math.floor(
+    potInSmallBlindUnits / playerAmount,
+  );
+
+  const pureChopValue = pureChopAmountInSmallBlinds * Number(smallBlind);
+
+  let remainder = Number(pot) - pureChopValue * playerAmount;
+
+  console.log('[INFO] chopAmount:', String(pureChopValue.toFixed(2)));
+  console.log('[INFO] chopAmount:', String(remainder));
+
+  return {
+    chopAmount: String(pureChopValue.toFixed(2)),
+    remainderChips: String(remainder),
+  };
+};
+
+export const getWinnerOfHand = (
+  players: string[][],
+  board: string[],
+  activeOrder: HandPlayerType[],
+  playerHandStore: IPlayerHand[],
+): { winningPlayers: HandPlayerType[]; isChop: boolean } => {
   const Table = new TexasHoldem();
 
   players.forEach(cards => {
@@ -139,9 +181,53 @@ export const getWinnerOfHand = (players: string[][], board: string[]) => {
 
   const Result = Table.calculate();
 
-  const winner = Result.getWinner();
+  const allPlayers = Result.getPlayers();
 
-  return Result;
+  const playersWhoChop = allPlayers.filter(player => player.getTies() > 0);
+
+  if (playersWhoChop.length > 0) {
+    console.log('[INFO]: Pot has been identified as a CHOP POT');
+
+    let playersWhoChopHands: HandPlayerType[] = [];
+
+    playersWhoChop.forEach(chopPlayer => {
+      const chopPlayerHand = playerHandStore.find(player => {
+        const playerHand = player.hand.join('');
+        console.log(`[INFO] Players Chopping Hand: ${playerHand}`);
+        return playerHand === chopPlayer.getHand();
+      });
+
+      const chopPlayerData = activeOrder.find(
+        player => player.seat === chopPlayerHand?.seat,
+      );
+
+      if (chopPlayerData) {
+        playersWhoChopHands = [chopPlayerData, ...playersWhoChopHands];
+      }
+    });
+
+    return { winningPlayers: playersWhoChopHands, isChop: true };
+  }
+
+  const winner = Result.getWinner();
+  const winningHand = winner.player.getHand();
+
+  const winningPlayer = playerHandStore.find(player => {
+    const playerHand = player.hand.join('');
+    console.log(`[INFO] Players Winning Hand: ${playerHand}`);
+    return playerHand === winningHand;
+  });
+
+  const winningPlayerData = activeOrder.find(
+    player => player.seat === winningPlayer?.seat,
+  );
+
+  if (winningPlayerData) {
+    return { winningPlayers: [winningPlayerData], isChop: false };
+  } else {
+    console.log('[ERROR]: Winning Player Data was not found.');
+    return { winningPlayers: [], isChop: false };
+  }
 };
 
 export const getHandSetup = (gameContext: GameContextType) => {
@@ -194,7 +280,7 @@ export const getHandSetup = (gameContext: GameContextType) => {
 };
 
 export const handleEnableRFID = async () => {
-  const disableRFID = await fetch('http://192.168.0.11:8080/rfid/continue', {
+  const disableRFID = await fetch('http://192.168.0.17:8080/rfid/continue', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -214,7 +300,7 @@ export const handleEnableRFID = async () => {
 };
 
 export const handleDisableRFID = async () => {
-  const disableRFID = await fetch('http://192.168.0.11:8080/rfid/stop', {
+  const disableRFID = await fetch('http://192.168.0.17:8080/rfid/stop', {
     method: 'POST',
     headers: {
       Accept: 'application/json',

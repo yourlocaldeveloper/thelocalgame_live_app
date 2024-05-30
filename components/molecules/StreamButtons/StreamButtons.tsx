@@ -45,6 +45,17 @@ export const StreamButtons: FC<StreamButtonsProps> = ({
     console.log(`Board: ${Result.getBoard()}`);
     console.log(`Iterations: ${Result.getIterations()}`);
     console.log(`Time takes: ${Result.getTime()}ms`);
+
+    const winnersNew = Result.getPlayers();
+
+    const winners = Result.getWinner();
+
+    winnersNew.forEach(winner => {
+      console.log(`Ties: ${winner.getTies()}`);
+      console.log(`Wins: ${winner.getWins()}`);
+    });
+
+    console.log(`Winner: ${winnersNew}`);
   };
 
   return (
