@@ -18,6 +18,7 @@ import {
 import { Modal } from '@components/atoms/Modal';
 import { SocketContext } from '@components/SocketContext';
 import { IPlayerHand } from '@components/Main';
+import { AlertModal } from '@components/molecules/AlertModal';
 
 import { NumberPad } from '../NumberPad';
 import {
@@ -65,6 +66,11 @@ export const HandProgress: FC<HandProgressProps> = ({
   const [showCheckButton, setShowCheckButton] = useState(true);
   const [showBetButton, setShowBetButton] = useState(true);
   const [showCallButton, setShowCallButton] = useState(true);
+
+  // Alert Box
+  const [showAlertModal, setShowAlertModal] = useState(true);
+  const [alertModalMessage, setAlertModalMessage] = useState('');
+  const [alertModalFunction, setAlertModalFunction] = useState(() => () => {});
 
   const [handData, setHandData] = useState<IHandData | null>(null);
 
@@ -910,13 +916,21 @@ export const HandProgress: FC<HandProgressProps> = ({
   // Initial hand set up.
   useEffect(() => {
     if (gameContext) {
-      const { preFlopOrder, initialBackup, initialHandData } =
+      const { preFlopOrder, postFlopOrder, initialBackup, initialHandData } =
         getHandSetup(gameContext);
 
       console.log('[HAND SETUP] Initial Hand Data:', initialHandData);
       socket?.emit('initialPlayerData', JSON.stringify(initialBackup));
-      displayPlayerToStream(preFlopOrder[0]);
+      socket?.emit('preflopOrder', JSON.stringify(postFlopOrder));
       setHandData(initialHandData);
+
+      setAlertModalMessage('Confirm player one cards have been read');
+      const gameSetupAlertFunction = () => {
+        displayPlayerToStream(preFlopOrder[0]);
+        setShowAlertModal(false);
+      };
+
+      setAlertModalFunction(() => gameSetupAlertFunction);
     }
   }, []);
 
@@ -996,7 +1010,7 @@ export const HandProgress: FC<HandProgressProps> = ({
               currentStreet === HandStreetEnum.PREFLOP
             ) {
               console.log('HAND STORE CARD DISABLE');
-              handleDisableRFID();
+              handleDisableRFID(5000);
             }
 
             return;
@@ -1174,6 +1188,14 @@ export const HandProgress: FC<HandProgressProps> = ({
     }
   }, [communityCardStore]);
 
+  useEffect(() => {
+    console.log('[[[DEBUG]]] SHOWING MODALLLLLL', showAlertModal);
+  }, [showAlertModal]);
+
+  useEffect(() => {
+    console.log('[[[DEBUG]]] alertModalMessage:', alertModalMessage);
+  }, [alertModalMessage]);
+
   return (
     <>
       <View style={styles.handProgress}>
@@ -1277,6 +1299,12 @@ export const HandProgress: FC<HandProgressProps> = ({
           />
         </View>
       </View>
+      {showAlertModal && (
+        <AlertModal
+          message={alertModalMessage}
+          submitFunction={alertModalFunction}
+        />
+      )}
       {showBetModal && (
         <Modal>
           <View style={styles.contentWrapper}>

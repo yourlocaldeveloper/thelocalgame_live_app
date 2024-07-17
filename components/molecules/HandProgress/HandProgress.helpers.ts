@@ -276,7 +276,13 @@ export const getHandSetup = (gameContext: GameContextType) => {
     playerToAct: preFlopOrder[0],
   };
 
-  return { preFlopOrder, initialBackup, initialHandData };
+  // ========= Get Order For Livestream App ========== //
+  const postFlopOrder = getPostFlopPlayerOrder(
+    playerWithButton,
+    handInfo.players,
+  );
+
+  return { preFlopOrder, postFlopOrder, initialBackup, initialHandData };
 };
 
 export const handleEnableRFID = async () => {
@@ -299,22 +305,24 @@ export const handleEnableRFID = async () => {
   console.log('[RFID]: ENABLED', disableRFID);
 };
 
-export const handleDisableRFID = async () => {
-  const disableRFID = await fetch('http://192.168.0.17:8080/rfid/stop', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({}),
-  })
-    .then(response => response.json())
-    .then(json => {
-      return json;
+export const handleDisableRFID = (delay?: number) => {
+  setTimeout(async () => {
+    const disableRFID = await fetch('http://192.168.0.17:8080/rfid/stop', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
     })
-    .catch(error => {
-      console.error(error);
-    });
+      .then(response => response.json())
+      .then(json => {
+        return json;
+      })
+      .catch(error => {
+        console.error(error);
+      });
 
-  console.log('[RFID]: DISABLED', disableRFID);
+    console.log('[RFID]: DISABLED', disableRFID);
+  }, delay || 1);
 };
