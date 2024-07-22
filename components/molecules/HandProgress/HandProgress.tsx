@@ -557,14 +557,6 @@ export const HandProgress: FC<HandProgressProps> = ({
 
       const newPlayerToAct = startingPlayer || orderWithActivePlayers[0];
 
-      socket?.emit(
-        String(newPlayerToAct.seat),
-        JSON.stringify({
-          stack: newPlayerToAct.stack,
-          isActive: true,
-        }),
-      );
-
       handDataOverwrite
         ? setHandData({
             ...handDataOverwrite,
@@ -1155,26 +1147,60 @@ export const HandProgress: FC<HandProgressProps> = ({
   }, [handData?.currentStreet, communityCardStore]);
 
   useEffect(() => {
-    if (handData?.currentStreet !== HandStreetEnum.PREFLOP) {
-      handData?.activeOrder.forEach((player, index) => {
-        const dataToEmit = {
-          stack: player.stack,
-          isActive: false,
-        };
+    const handleNextStreet = () => {
+      if (
+        handData?.currentStreet !== HandStreetEnum.PREFLOP &&
+        handData?.currentStreet !== HandStreetEnum.ALLIN
+      ) {
+        handData?.activeOrder.forEach(player => {
+          const dataToEmit = {
+            stack: player.stack,
+            isActive: false,
+          };
 
-        socket?.emit(String(player.seat), JSON.stringify(dataToEmit));
-      });
+          socket?.emit(String(player.seat), JSON.stringify(dataToEmit));
+        });
+      }
+
+      socket?.emit(
+        String(handData?.playerToAct.seat),
+        JSON.stringify({ stack: handData?.playerToAct.stack, isActive: true }),
+      );
+
+      socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
+      setRaiseCount(0);
+
+      handleEnableRFID();
+
+      if (
+        handData?.currentStreet &&
+        handData?.currentStreet !== HandStreetEnum.PREFLOP
+      ) {
+        setShowAlertModal(false);
+      }
+    };
+
+    const handleCommunityCardDealt = () => {
+      // OBS Function Required
+      // Send OBS Camera Data Here
+      // We want to hide the overlay and show camera for community cards
+
+      setAlertModalFunction(() => handleNextStreet);
+      setAlertModalMessage('Click to confirm next street');
+    };
+
+    if (
+      handData?.currentStreet &&
+      handData?.currentStreet !== HandStreetEnum.PREFLOP
+    ) {
+      console.log('CALLED');
+      setAlertModalFunction(() => handleCommunityCardDealt);
+      setAlertModalMessage('Confirm when community cards dealt');
+      setShowAlertModal(true);
+      return;
     }
 
-    socket?.emit(
-      String(handData?.playerToAct.seat),
-      JSON.stringify({ stack: handData?.playerToAct.stack, isActive: true }),
-    );
-
-    socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
-    setRaiseCount(0);
-
-    handleEnableRFID();
+    handleNextStreet();
   }, [handData?.currentStreet]);
 
   useEffect(() => {
@@ -1245,18 +1271,18 @@ export const HandProgress: FC<HandProgressProps> = ({
           </Text>
         </View>
         <View style={styles.row}>
-          <AppButton
-            color={ButtonColorEnum.WHITE}
-            width={150}
-            text={'FOLD'}
-            onPress={() =>
-              handData
-                ? handleAction(handData.playerToAct, HandActionEnum.FOLD)
-                : null
-            }
-          />
           {handData?.currentStreet !== HandStreetEnum.ALLIN && (
             <>
+              <AppButton
+                color={ButtonColorEnum.WHITE}
+                width={150}
+                text={'FOLD'}
+                onPress={() =>
+                  handData
+                    ? handleAction(handData.playerToAct, HandActionEnum.FOLD)
+                    : null
+                }
+              />
               {showCheckButton && (
                 <AppButton
                   color={ButtonColorEnum.WHITE}
