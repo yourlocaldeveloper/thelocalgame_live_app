@@ -72,6 +72,9 @@ export const HandProgress: FC<HandProgressProps> = ({
   const [alertModalMessage, setAlertModalMessage] = useState('');
   const [alertModalFunction, setAlertModalFunction] = useState(() => () => {});
 
+  // Stream Helpers
+  const [raiseCount, setRaiseCount] = useState(0);
+
   const [handData, setHandData] = useState<IHandData | null>(null);
 
   const clearStore = () => {
@@ -653,22 +656,26 @@ export const HandProgress: FC<HandProgressProps> = ({
         ? { ...handDataOverride, playerToAct: nextPlayer }
         : { ...handData, playerToAct: nextPlayer };
 
-      if (currentStreet === HandStreetEnum.PREFLOP) {
-        console.log('[STREAM]: Displaying User');
-        displayPlayerToStream(nextPlayer);
-      }
-
       if (
         nextPlayer.action.type === HandActionEnum.FOLD ||
         nextPlayer.action.type === HandActionEnum.ALLIN
       ) {
         handleAssignNextPlayer(updatedHandData);
       } else {
+        if (
+          currentStreet === HandStreetEnum.PREFLOP &&
+          nextPlayer.action.type === HandActionEnum.NON
+        ) {
+          console.log('[STREAM]: Displaying User');
+          displayPlayerToStream(nextPlayer);
+        }
+
         socket?.emit(
           String(nextPlayer.seat),
           JSON.stringify({
             stack: nextPlayer.stack,
             isActive: true,
+            raiseCount: raiseCount,
           }),
         );
         setHandData(updatedHandData);
@@ -713,6 +720,7 @@ export const HandProgress: FC<HandProgressProps> = ({
           stack: actionPlayer.stack,
           action: actionPlayer.action.type,
           isActive: false,
+          raiseCount: raiseCount,
         }),
       );
 
@@ -739,7 +747,7 @@ export const HandProgress: FC<HandProgressProps> = ({
   ) => {
     if (handData) {
       console.log(
-        `[PLAYER ACTION]: ${actionPlayer?.name} HAS PUT IN ${playerBet}`,
+        `[PLAYER ACTION]: ${actionPlayer?.name} HAS PUT IN ${playerBet} because they have bet?: ${isBet}`,
       );
       const playerSeat = actionPlayer.seat;
 
@@ -782,7 +790,7 @@ export const HandProgress: FC<HandProgressProps> = ({
         const newAction: ActionType = {
           seat: actionPlayer.seat,
           type: playerAction,
-          bet: adjustedPlayerBet || '',
+          bet: playerBet || '', // reason we dont use adjusted bet because blinds call wrong amount when adjustAmount is given
         };
 
         playerAdjustedStack.action = newAction;
@@ -797,10 +805,6 @@ export const HandProgress: FC<HandProgressProps> = ({
         const newPot = addChips(pot, adjustedPlayerBet);
 
         if (isClosingAction) {
-          if (isBet) {
-            socket?.emit('submitEffectiveAction', JSON.stringify(newAction));
-          }
-
           socket?.emit(
             String(newAction.seat),
             JSON.stringify({
@@ -808,6 +812,7 @@ export const HandProgress: FC<HandProgressProps> = ({
               action: playerAdjustedStack.action.type,
               bet: playerAdjustedStack.action.bet,
               isActivePlayer: false,
+              raiseCount: raiseCount,
             }),
           );
 
@@ -819,10 +824,8 @@ export const HandProgress: FC<HandProgressProps> = ({
           });
         } else {
           if (isBet) {
-            socket?.emit(
-              'submitEffectiveAction',
-              JSON.stringify(handData.effectiveAction),
-            );
+            socket?.emit('submitEffectiveAction', JSON.stringify(newAction));
+            setRaiseCount(count => count + 1);
           }
 
           socket?.emit(
@@ -832,6 +835,7 @@ export const HandProgress: FC<HandProgressProps> = ({
               action: playerAdjustedStack.action.type,
               bet: playerAdjustedStack.action.bet,
               isActivePlayer: false,
+              raiseCount: raiseCount,
             }),
           );
 
@@ -1110,7 +1114,7 @@ export const HandProgress: FC<HandProgressProps> = ({
           socket?.off(socketRef);
           if (limit !== 0) {
             console.log('[CARD STORE] COMMUNITY CARD DISABLE');
-            handleDisableRFID();
+            handleDisableRFID(1000);
           }
         }
       }
@@ -1167,6 +1171,9 @@ export const HandProgress: FC<HandProgressProps> = ({
       JSON.stringify({ stack: handData?.playerToAct.stack, isActive: true }),
     );
 
+    socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
+    setRaiseCount(0);
+
     handleEnableRFID();
   }, [handData?.currentStreet]);
 
@@ -1195,6 +1202,12 @@ export const HandProgress: FC<HandProgressProps> = ({
   useEffect(() => {
     console.log('[[[DEBUG]]] alertModalMessage:', alertModalMessage);
   }, [alertModalMessage]);
+
+  useEffect(() => {
+    if (handData?.pot) {
+      socket?.emit('pot', JSON.stringify(handData?.pot));
+    }
+  }, [handData?.pot]);
 
   return (
     <>

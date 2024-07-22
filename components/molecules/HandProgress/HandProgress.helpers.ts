@@ -105,7 +105,7 @@ export const removeChips = (
 export const addChips = (firstValue: string, secondValue: string): string => {
   console.log('[[[DEBUG]]] firstValue:', Number(firstValue));
   console.log('[[[DEBUG]]] secondValue:', Number(secondValue));
-  console.log('[[[DEBUG]]] Result:', Number(firstValue) - Number(secondValue));
+  console.log('[[[DEBUG]]] Result:', Number(firstValue) + Number(secondValue));
   return String((Number(firstValue) + Number(secondValue)).toFixed(2));
 };
 
