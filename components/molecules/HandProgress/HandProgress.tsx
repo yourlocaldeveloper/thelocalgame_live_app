@@ -858,6 +858,14 @@ export const HandProgress: FC<HandProgressProps> = ({
           handleFold(actionPlayer, true);
           return;
         } else if (action === HandActionEnum.CHECK) {
+          socket?.emit(
+            String(actionPlayer.seat),
+            JSON.stringify({
+              stack: actionPlayer.stack,
+              action: HandActionEnum.CHECK,
+              isActivePlayer: false,
+            }),
+          );
           handleClosingAction();
 
           return;
