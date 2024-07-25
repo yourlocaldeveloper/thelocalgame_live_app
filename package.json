@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "obs-websocket-js": "^5.0.5",
     "poker-odds-calc": "^0.0.14",
     "react": "18.2.0",
     "react-native": "0.72.6",

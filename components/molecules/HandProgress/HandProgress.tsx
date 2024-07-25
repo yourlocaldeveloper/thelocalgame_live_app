@@ -44,6 +44,7 @@ import {
 } from './HandProgress.types';
 
 import { styles } from './HandProgress.styles';
+import { OBSSocketContext } from '@components/OBSSocketContext';
 
 type HandProgressProps = {
   playerHandStore: IPlayerHand[];
@@ -56,8 +57,10 @@ export const HandProgress: FC<HandProgressProps> = ({
 }) => {
   const gameContext = useContext(GameContext);
   const socketContext = useContext(SocketContext);
+  const obsSocketContext = useContext(OBSSocketContext);
 
   const socket = socketContext?.socket;
+  const obsSocket = obsSocketContext.obsSocket;
 
   const [showBetModal, setShowBetModal] = useState(false);
   const [bet, setBet] = useState('');
@@ -1167,35 +1170,44 @@ export const HandProgress: FC<HandProgressProps> = ({
         JSON.stringify({ stack: handData?.playerToAct.stack, isActive: true }),
       );
 
-      socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
       setRaiseCount(0);
 
-      handleEnableRFID();
+      if (
+        handData?.currentStreet &&
+        handData?.currentStreet === HandStreetEnum.PREFLOP
+      ) {
+        socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
+        handleEnableRFID();
+      }
 
       if (
         handData?.currentStreet &&
         handData?.currentStreet !== HandStreetEnum.PREFLOP
       ) {
         setShowAlertModal(false);
+        socket?.emit('setShowStreamOverlay', JSON.stringify(true));
+        obsSocket.call('SetCurrentProgramScene', { sceneName: 'Camera1' });
       }
     };
 
     const handleCommunityCardDealt = () => {
-      // OBS Function Required
-      // Send OBS Camera Data Here
-      // We want to hide the overlay and show camera for community cards
+      obsSocket.call('SetCurrentProgramScene', {
+        sceneName: 'Community Cards',
+      });
+      socket?.emit('setShowStreamOverlay', JSON.stringify(false));
+      socket?.emit('currentStreet', JSON.stringify(handData?.currentStreet));
+      handleEnableRFID();
 
       setAlertModalFunction(() => handleNextStreet);
-      setAlertModalMessage('Click to confirm next street');
+      setAlertModalMessage('Click to switch to next street');
     };
 
     if (
       handData?.currentStreet &&
       handData?.currentStreet !== HandStreetEnum.PREFLOP
     ) {
-      console.log('CALLED');
       setAlertModalFunction(() => handleCommunityCardDealt);
-      setAlertModalMessage('Confirm when community cards dealt');
+      setAlertModalMessage('Click to switch to community card view');
       setShowAlertModal(true);
       return;
     }

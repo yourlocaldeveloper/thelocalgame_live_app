@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { io } from 'socket.io-client';
+import OBSWebSocket from 'obs-websocket-js';
 
 import { TopRow } from '@components/organism/TopRow';
 import { TableInfo } from '@components/organism/TableInfo';
@@ -19,6 +20,7 @@ import {
   testPlayers,
 } from './GameContext';
 import { SocketContext } from './SocketContext';
+import { OBSSocketContext } from './OBSSocketContext';
 
 export interface IPlayerHand {
   hand: string[];
@@ -29,6 +31,8 @@ export interface IPlayerHand {
 const socket = io('http://192.168.0.17:3001', {
   autoConnect: false,
 });
+
+const obsSocket = new OBSWebSocket();
 
 export const Main: FC = () => {
   const styles = StyleSheet.create({
@@ -48,52 +52,76 @@ export const Main: FC = () => {
   const [playerHandStore, setPlayerHandStore] = useState<IPlayerHand[]>([]);
 
   const [isConnectedToServer, setIsConnectedToServer] = useState(false);
+  const [isObsWebSocketConnected, setIsObsWebSocketConnected] = useState(false);
 
   useEffect(() => {
+    console.log('[Web Sockets]: Initializing');
+
     socket.connect();
-    console.log('[CONNECTION]: Attempting to connect');
+    obsSocket.connect('ws://192.168.0.17:4455');
+
     const onConnect = () => {
-      console.log('[CONNECTION]: CONNECTED');
+      console.log('[RFID Web Socket]: Connected');
       setIsConnectedToServer(true);
     };
 
     const onDisconnect = () => {
+      console.log('[RFID Web Socket]: Disconnected');
       setIsConnectedToServer(false);
+    };
+
+    const onObsConnect = () => {
+      console.log('[OBS Web Socket]: Connected');
+      setIsObsWebSocketConnected(true);
+    };
+
+    const onObsDisconnect = () => {
+      console.log('[OBS Web Socket]: Disconnected');
+      setIsObsWebSocketConnected(false);
     };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
+    obsSocket.on('ConnectionOpened', onObsConnect);
+    obsSocket.on('ConnectionClosed', onObsDisconnect);
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
       socket.disconnect();
+
+      obsSocket.off('ConnectionOpened');
+      obsSocket.off('ConnectionClosed');
+      obsSocket.disconnect();
     };
   }, []);
 
   return (
     <SocketContext.Provider value={{ socket }}>
-      <GameContext.Provider
-        value={{
-          players,
-          setPlayers,
-          gameState,
-          setGameState,
-          gameSettings,
-          setGameSettings,
-          handInfo,
-          setHandInfo,
-        }}>
-        <View style={styles.main}>
-          <TopRow isConnectedToServer={isConnectedToServer} />
-          <TableInfo />
-          <PlayerInfo playerHandStore={playerHandStore} />
-          <BottomRow
-            playerHandStore={playerHandStore}
-            setPlayerHandStore={setPlayerHandStore}
-          />
-        </View>
-      </GameContext.Provider>
+      <OBSSocketContext.Provider value={{ obsSocket }}>
+        <GameContext.Provider
+          value={{
+            players,
+            setPlayers,
+            gameState,
+            setGameState,
+            gameSettings,
+            setGameSettings,
+            handInfo,
+            setHandInfo,
+          }}>
+          <View style={styles.main}>
+            <TopRow isConnectedToServer={isConnectedToServer} />
+            <TableInfo />
+            <PlayerInfo playerHandStore={playerHandStore} />
+            <BottomRow
+              playerHandStore={playerHandStore}
+              setPlayerHandStore={setPlayerHandStore}
+            />
+          </View>
+        </GameContext.Provider>
+      </OBSSocketContext.Provider>
     </SocketContext.Provider>
   );
 };
