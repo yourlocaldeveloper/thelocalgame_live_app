@@ -112,7 +112,10 @@ export const Main: FC = () => {
             setHandInfo,
           }}>
           <View style={styles.main}>
-            <TopRow isConnectedToServer={isConnectedToServer} />
+            <TopRow
+              isConnectedToServer={isConnectedToServer}
+              isObsWebSocketConnected={isObsWebSocketConnected}
+            />
             <TableInfo />
             <PlayerInfo playerHandStore={playerHandStore} />
             <BottomRow

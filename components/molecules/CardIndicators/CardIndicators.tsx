@@ -23,6 +23,16 @@ export const CardIndicators: FC<CardIndicatorsProps> = ({
   const players = gameContext?.players;
 
   const cardIndicators = players?.map(player => {
+    if (player.active === false) {
+      return (
+        <AppButton
+          key={player.name}
+          color={ButtonColorEnum.DARK_RED}
+          text={'Not Active'}
+        />
+      );
+    }
+
     const playerWithHand = playerHandStore.find(
       ply => ply.seat === player.seat,
     );

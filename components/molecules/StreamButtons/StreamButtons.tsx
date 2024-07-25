@@ -6,10 +6,12 @@ import { AppButton, ButtonColorEnum } from '@components/atoms/Button';
 
 interface StreamButtonsProps {
   isConnectedToServer: boolean;
+  isObsWebSocketConnected: boolean;
 }
 
 export const StreamButtons: FC<StreamButtonsProps> = ({
   isConnectedToServer,
+  isObsWebSocketConnected,
 }) => {
   const styles = StyleSheet.create({
     streamButtons: {
@@ -60,12 +62,17 @@ export const StreamButtons: FC<StreamButtonsProps> = ({
 
   return (
     <View style={styles.streamButtons}>
-      <AppButton color={ButtonColorEnum.BLUE} text={'RFID Health'} />
       <AppButton
         color={
           isConnectedToServer ? ButtonColorEnum.GREEN : ButtonColorEnum.RED
         }
         text={'Socket IO'}
+      />
+      <AppButton
+        color={
+          isObsWebSocketConnected ? ButtonColorEnum.GREEN : ButtonColorEnum.RED
+        }
+        text={'OBS Web Socket'}
       />
       <AppButton color={ButtonColorEnum.BLUE} text={'Toggle Stream'} />
       <AppButton

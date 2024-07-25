@@ -918,14 +918,20 @@ export const HandProgress: FC<HandProgressProps> = ({
       const { preFlopOrder, postFlopOrder, initialBackup, initialHandData } =
         getHandSetup(gameContext);
 
+      const firstToAct = preFlopOrder[0];
+
       console.log('[HAND SETUP] Initial Hand Data:', initialHandData);
       socket?.emit('initialPlayerData', JSON.stringify(initialBackup));
+
+      // TO-DO: Fix identifier naming of this emit as its the postFlopOrder
       socket?.emit('preflopOrder', JSON.stringify(postFlopOrder));
       setHandData(initialHandData);
 
-      setAlertModalMessage('Confirm player one cards have been read');
+      setAlertModalMessage(
+        `Confirm that ${firstToAct.name} cards have been read`,
+      );
       const gameSetupAlertFunction = () => {
-        displayPlayerToStream(preFlopOrder[0]);
+        displayPlayerToStream(firstToAct);
         setShowAlertModal(false);
       };
 
@@ -1199,7 +1205,7 @@ export const HandProgress: FC<HandProgressProps> = ({
       handleEnableRFID();
 
       setAlertModalFunction(() => handleNextStreet);
-      setAlertModalMessage('Click to switch to next street');
+      setAlertModalMessage(`Click to switch to the ${handData?.currentStreet}`);
     };
 
     if (
@@ -1251,31 +1257,36 @@ export const HandProgress: FC<HandProgressProps> = ({
     <>
       <View style={styles.handProgress}>
         <View style={styles.potIndicator}>
-          <Text style={styles.actionIndicatorText}>
+          <Text style={styles.actionIndicatorTextWithBck}>
             Pot: {gameContext?.gameSettings.currency}
             {handData?.pot}
           </Text>
-          <Text style={styles.actionIndicatorText}>
+          <Text style={styles.actionIndicatorTextWithBck}>
             Street: {handData?.currentStreet}
           </Text>
         </View>
-        <View style={styles.effectiveActionIndiciator}>
-          <Text style={styles.actionIndicatorText}>
-            Efc Action: {handData?.effectiveAction.type}
-          </Text>
-          <Text style={styles.actionIndicatorText}>
-            Amount: {handData?.effectiveAction.bet}
-          </Text>
-          <Text style={styles.actionIndicatorText}>
-            Player: {handData?.effectiveAction.seat}
-          </Text>
-        </View>
+        {handData?.effectiveAction.type !== HandActionEnum.NON && (
+          <View style={styles.effectiveActionIndiciator}>
+            <Text style={styles.actionIndicatorTextWithBck}>
+              Action: {handData?.effectiveAction.type}
+            </Text>
+            <Text style={styles.actionIndicatorTextWithBck}>
+              Amount: {handData?.effectiveAction.bet}
+            </Text>
+            <Text style={styles.actionIndicatorTextWithBck}>
+              Seat: {handData?.effectiveAction.seat}
+            </Text>
+          </View>
+        )}
         <View style={styles.communityCardsWrapper}>
           <Text style={styles.actionIndicatorText}>
             {communityCardStore.join(' ')}
           </Text>
         </View>
         <View style={styles.actionIndicatorWrapper}>
+          <Text style={styles.actionIndicatorText}>
+            Waiting For Action From:
+          </Text>
           <Text style={styles.actionIndicatorText}>
             {handData?.playerToAct.name
               ? `${handData?.playerToAct.name} - ${gameContext?.gameSettings.currency}${handData?.playerToAct.stack}`
@@ -1337,16 +1348,20 @@ export const HandProgress: FC<HandProgressProps> = ({
         <View style={styles.undoButtonWrapper}>
           <AppButton
             color={ButtonColorEnum.RED}
-            width={150}
+            height={590}
+            width={75}
             text={'UNDO ACTION'}
+            isVerticalTextLeft
           />
         </View>
         <View style={styles.missdealButtonWrapper}>
           <AppButton
             color={ButtonColorEnum.RED}
             text={'MISSDEAL'}
-            width={150}
+            height={590}
+            width={75}
             onPress={handleMissdeal}
+            isVerticalTextRight
           />
         </View>
       </View>

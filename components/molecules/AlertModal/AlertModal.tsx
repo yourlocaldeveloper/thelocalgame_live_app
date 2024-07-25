@@ -20,11 +20,15 @@ export const AlertModal: FC<AlertModalProps> = ({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      height: '100%',
+      width: '100%',
     },
     alertMessage: {
       color: 'white',
       fontWeight: 'bold',
       marginBottom: 20,
+      fontSize: 30,
+      textAlign: 'center',
     },
   });
 

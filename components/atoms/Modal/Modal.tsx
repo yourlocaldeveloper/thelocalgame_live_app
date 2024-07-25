@@ -10,9 +10,10 @@ export const Modal: FC<ModalProps> = ({ children, isFullscreen }) => {
   const styles = StyleSheet.create({
     modal: {
       position: 'absolute',
-      width: '100%',
-      height: 400,
-      top: 0,
+      width: Dimensions.get('window').width - 150,
+      height: 590,
+      bottom: 0,
+      left: 75,
       backgroundColor: '#0D1321',
       zIndex: 100,
     },

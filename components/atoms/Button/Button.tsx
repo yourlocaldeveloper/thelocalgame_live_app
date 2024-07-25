@@ -3,6 +3,7 @@ import { StyleSheet, Pressable, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 export enum ButtonColorEnum {
+  DARK_RED,
   RED,
   BLUE,
   ORANGE,
@@ -17,6 +18,8 @@ type ButtonProps = {
   onPress?: () => void;
   width?: number;
   height?: number;
+  isVerticalTextLeft?: boolean;
+  isVerticalTextRight?: boolean;
 };
 
 export const AppButton: FC<ButtonProps> = ({
@@ -25,6 +28,8 @@ export const AppButton: FC<ButtonProps> = ({
   onPress,
   width,
   height,
+  isVerticalTextLeft,
+  isVerticalTextRight,
 }) => {
   const styles = StyleSheet.create({
     button: {
@@ -48,6 +53,12 @@ export const AppButton: FC<ButtonProps> = ({
       borderRadius: 10,
       padding: 2,
       margin: 2,
+    },
+    verticalText: {
+      transform: isVerticalTextLeft
+        ? [{ rotate: '-90deg' }]
+        : [{ rotate: '90deg' }],
+      width: isVerticalTextLeft || isVerticalTextRight ? height : width || 100,
     },
   });
 
@@ -74,6 +85,8 @@ export const AppButton: FC<ButtonProps> = ({
 
   const getBackgroundColor = () => {
     switch (color) {
+      case ButtonColorEnum.DARK_RED:
+        return ['#461919', '#350303'];
       case ButtonColorEnum.RED:
         return ['#D54A4A', '#BB0A0A'];
       case ButtonColorEnum.BLUE:
@@ -91,6 +104,8 @@ export const AppButton: FC<ButtonProps> = ({
 
   const getTextColor = () => {
     switch (color) {
+      case ButtonColorEnum.RED:
+        return textStyles.red;
       case ButtonColorEnum.RED:
         return textStyles.red;
       case ButtonColorEnum.BLUE:
@@ -113,7 +128,14 @@ export const AppButton: FC<ButtonProps> = ({
         style={styles.gradient}
         useAngle={true}
         angle={90}>
-        <Text style={[styles.text, getTextColor()]}>{text}</Text>
+        <Text
+          style={[
+            styles.text,
+            getTextColor(),
+            (isVerticalTextLeft || isVerticalTextRight) && styles.verticalText,
+          ]}>
+          {text}
+        </Text>
       </LinearGradient>
     </Pressable>
   );
