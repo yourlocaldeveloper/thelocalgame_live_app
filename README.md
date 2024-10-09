@@ -7,7 +7,7 @@ This is the heart of the RFID table. This handles the entire logic and game flow
 
 This handles the game logic and stores the state it is in.
 
-Learn more about this project on my [website][https://www.yourlocaldev.com/projects/rfid]
+Learn more about this project on my [website](https://www.yourlocaldev.com/projects/rfid)
 
 ## Notible files:
 
